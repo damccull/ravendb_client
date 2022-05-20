@@ -14,7 +14,7 @@ have applied.
 Caching is built in. All requests to the server(s) and their
 responses are cached within the Document Store.
 
-A single instance of the [`DocumentStore`] should be created per 
+A single instance of the [`DocumentStore`] should be created per
 cluster per the lifetime of your application.
 
 WIP: It can be cloned cheaply as only a reference is given during clone.
@@ -22,7 +22,7 @@ WIP: It can be cloned cheaply as only a reference is given during clone.
 WIP: The Document Store is thread safe - implemented in a thread safe manner.
 */
 pub trait DocumentStore {
-    fn initialize(&self) -> Self;
+    fn initialize(&self);
 }
 
 /**
@@ -32,7 +32,8 @@ pub trait DocumentStore {
 ```rust
 use ravendb_client::{DocumentStore, DefaultDocumentStoreBuilder};
 
-let docstore = DefaultDocumentStoreBuilder::new().build().initialize() as DocumentStore;
+let docstore = DefaultDocumentStoreBuilder::new().build();
+docstore.initialize();
 ```
 */
 #[derive(Clone, Debug, Default)]
@@ -50,8 +51,8 @@ impl DefaultDocumentStore {
     }
 }
 impl DocumentStore for DefaultDocumentStore {
-    fn initialize(&self) -> Self {
-        todo!()
+    fn initialize(&self) {
+        todo!();
     }
 }
 
