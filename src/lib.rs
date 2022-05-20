@@ -1,3 +1,5 @@
+mod document_store;
+pub use document_store::*;
 
 #[cfg(test)]
 mod tests {
