@@ -1,7 +1,7 @@
 /**
 A trait representing a document store.
 
-A DocumentStore is the main client API object. It establishes and
+A [`DocumentStore`] is the main client API object. It establishes and
 manages communication between your client application and a RavenDB
 cluster.
 
@@ -14,8 +14,10 @@ have applied.
 Caching is built in. All requests to the server(s) and their
 responses are cached within the Document Store.
 
-A single instance of the Document Store (Singleton Pattern) should
-be created per cluster per the lifetime of your application.
+A single instance of the [`DocumentStore`] should be created per 
+cluster per the lifetime of your application.
+
+WIP: It can be cloned cheaply as only a reference is given during clone.
 
 WIP: The Document Store is thread safe - implemented in a thread safe manner.
 */
@@ -24,7 +26,7 @@ pub trait DocumentStore {
 }
 
 /**
-DefaultDocumentStore is a provided implementation of the [`DocumentStore`].
+[`DefaultDocumentStore`] is a provided implementation of the [`DocumentStore`].
 
 # Example
 ```rust
