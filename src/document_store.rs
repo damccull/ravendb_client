@@ -23,7 +23,6 @@ pub trait DocumentStore {
     fn initialize(&self) -> Self;
 }
 
-
 /**
 DefaultDocumentStore is a provided implementation of the [`DocumentStore`].
 
@@ -80,7 +79,6 @@ impl DefaultDocumentStoreBuilder {
         self.document_store.clone()
     }
 }
-
 
 #[derive(Clone, Debug, Default)]
 pub struct Conventions;
