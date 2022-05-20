@@ -40,7 +40,13 @@ pub struct DefaultDocumentStore {
     database: Option<String>,
     certificate: Option<Certificate>,
 }
-
+impl DefaultDocumentStore {
+    /// Returns a [`DefaultDocumentStoreBuilder`] to allow configuration
+    /// of the DefaultDocumentStore.
+    pub fn builder() -> DefaultDocumentStoreBuilder {
+        DefaultDocumentStoreBuilder::default()
+    }
+}
 impl DocumentStore for DefaultDocumentStore {
     fn initialize(&self) -> Self {
         todo!()
@@ -76,6 +82,9 @@ impl DefaultDocumentStoreBuilder {
     }
 
     pub fn build(&self) -> DefaultDocumentStore {
+        //TODO: Change this to return a new one instead of clone
+        // since clone probably needs to return a reference much
+        // like Arc or similar.
         self.document_store.clone()
     }
 }
