@@ -1,6 +1,8 @@
 mod document_store;
 pub use document_store::*;
 
+pub mod events;
+
 #[cfg(test)]
 mod tests {
     #[test]
