@@ -1,3 +1,5 @@
+use crate::events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents};
+
 /**
 A trait representing a document store.
 
@@ -22,6 +24,14 @@ WIP: It can be cloned cheaply as only a reference is given during clone.
 WIP: The Document Store is thread safe - implemented in a thread safe manner.
 */
 pub trait DocumentStore {
+    /// Register for a [`tokio::sync::broadcast::Receiver`] of [`CrudEvents`].
+    fn register_crud_events(&self) -> tokio::sync::broadcast::Receiver<CrudEvents>;
+    /// Register for a [`tokio::sync::broadcast::Receiver`] of [`RequestEvents`]
+    fn register_request_events(&self) -> tokio::sync::broadcast::Receiver<RequestEvents>;
+    /// Register for a [`tokio::sync::broadcast::Receiver`] of [`ConversionEvents`]
+    fn register_conversion_events(&self) -> tokio::sync::broadcast::Receiver<ConversionEvents>;
+    /// Register for a [`tokio::sync::broadcast::Receiver`] of [`SessionEvents`]
+    fn register_session_events(&self) -> tokio::sync::broadcast::Receiver<SessionEvents>;
     fn initialize(&self);
 }
 
