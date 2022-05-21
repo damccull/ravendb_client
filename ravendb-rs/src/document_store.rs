@@ -65,11 +65,31 @@ impl DefaultDocumentStore {
         DefaultDocumentStoreBuilder::default()
     }
 }
-// impl DocumentStore for DefaultDocumentStore {
-//     fn initialize(&self) {
-//         todo!();
-//     }
-// }
+impl DocumentStore for DefaultDocumentStore {
+    fn initialize(&self) {
+        todo!();
+    }
+
+    fn register_crud_events(&self) -> tokio::sync::broadcast::Receiver<CrudEvents> {
+        todo!()
+    }
+
+    fn register_request_events(&self) -> tokio::sync::broadcast::Receiver<RequestEvents> {
+        todo!()
+    }
+
+    fn register_conversion_events(&self) -> tokio::sync::broadcast::Receiver<ConversionEvents> {
+        todo!()
+    }
+
+    fn register_session_events(&self) -> tokio::sync::broadcast::Receiver<SessionEvents> {
+        todo!()
+    }
+
+    fn changes(&self) -> Box<dyn DatabaseChangesBuilder> {
+        todo!()
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct DefaultDocumentStoreBuilder {
@@ -118,4 +138,3 @@ pub trait DatabaseChangesBuilder {
     fn node(&self, node_name: &str) -> Box<dyn DatabaseChangesBuilder>;
     fn build(&self) -> Box<dyn DatabaseChanges>;
 }
-
