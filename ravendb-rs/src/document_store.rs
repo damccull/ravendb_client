@@ -32,6 +32,11 @@ pub trait DocumentStore {
     fn register_conversion_events(&self) -> tokio::sync::broadcast::Receiver<ConversionEvents>;
     /// Register for a [`tokio::sync::broadcast::Receiver`] of [`SessionEvents`]
     fn register_session_events(&self) -> tokio::sync::broadcast::Receiver<SessionEvents>;
+
+    /// Subscribe to change notifications from the server.
+    ///
+    /// If `server` or `node` are [`None`], the default will be selected.
+    fn changes(&self) -> Box<dyn DatabaseChangesBuilder>;
     fn initialize(&self);
 }
 
@@ -60,11 +65,11 @@ impl DefaultDocumentStore {
         DefaultDocumentStoreBuilder::default()
     }
 }
-impl DocumentStore for DefaultDocumentStore {
-    fn initialize(&self) {
-        todo!();
-    }
-}
+// impl DocumentStore for DefaultDocumentStore {
+//     fn initialize(&self) {
+//         todo!();
+//     }
+// }
 
 #[derive(Clone, Debug, Default)]
 pub struct DefaultDocumentStoreBuilder {
@@ -106,3 +111,11 @@ impl DefaultDocumentStoreBuilder {
 pub struct Conventions;
 #[derive(Clone, Debug, Default)]
 pub struct Certificate;
+
+pub trait DatabaseChanges {}
+pub trait DatabaseChangesBuilder {
+    fn server(&self, address: &str) -> Box<dyn DatabaseChangesBuilder>;
+    fn node(&self, node_name: &str) -> Box<dyn DatabaseChangesBuilder>;
+    fn build(&self) -> Box<dyn DatabaseChanges>;
+}
+
