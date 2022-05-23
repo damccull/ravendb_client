@@ -22,6 +22,16 @@ cluster per the lifetime of your application.
 WIP: It can be cloned cheaply as only a reference is given during clone.
 
 WIP: The Document Store is thread safe - implemented in a thread safe manner.
+
+# Event Receivers
+The libraries for other languages use the observer pattern to register a callback
+handler with a delegate. This doesn't fit rust well so the events have been
+re-imagined using tokio broadcast channels and enums. This allows events to be
+broadcast to anyone listening and they can be handled locally instead of the library
+calling a function for each event.
+
+To register for an event, call one of the `get_x_events_receiver` methods on the
+[`DocumentStore`] and handle any events received through it as desired.
 */
 pub trait DocumentStore {
     /// Get a [`tokio::sync::broadcast::Receiver`] of [`CrudEvents`].
