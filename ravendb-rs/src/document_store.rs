@@ -1,8 +1,6 @@
 use crate::events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents};
 
 /**
-A trait representing a document store.
-
 A [`DocumentStore`] is the main client API object. It establishes and
 manages communication between your client application and a RavenDB
 cluster.
@@ -32,26 +30,6 @@ calling a function for each event.
 
 To register for an event, call one of the `get_x_events_receiver` methods on the
 [`DocumentStore`] and handle any events received through it as desired.
-*/
-pub trait DocumentStore {
-    /// Get a [`tokio::sync::broadcast::Receiver`] of [`CrudEvents`].
-    fn get_crud_events_receiver(&self) -> tokio::sync::broadcast::Receiver<CrudEvents>;
-    /// Get a [`tokio::sync::broadcast::Receiver`] of [`RequestEvents`]
-    fn get_request_events_receiver(&self) -> tokio::sync::broadcast::Receiver<RequestEvents>;
-    /// Get a [`tokio::sync::broadcast::Receiver`] of [`ConversionEvents`]
-    fn get_conversion_events_receiver(&self) -> tokio::sync::broadcast::Receiver<ConversionEvents>;
-    /// Get a [`tokio::sync::broadcast::Receiver`] of [`SessionEvents`]
-    fn get_session_events_receiver(&self) -> tokio::sync::broadcast::Receiver<SessionEvents>;
-
-    /// Subscribe to change notifications from the server.
-    ///
-    /// If `server` or `node` are [`None`], the default will be selected.
-    fn changes(&self) -> Box<dyn DatabaseChangesBuilder>;
-    fn initialize(&self);
-}
-
-/**
-[`DefaultDocumentStore`] is a provided implementation of the [`DocumentStore`].
 
 # Example
 ```rust
@@ -74,29 +52,37 @@ impl DefaultDocumentStore {
     pub fn builder() -> DefaultDocumentStoreBuilder {
         DefaultDocumentStoreBuilder::default()
     }
-}
-impl DocumentStore for DefaultDocumentStore {
-    fn initialize(&self) {
+
+    pub fn initialize(&self) {
         todo!();
     }
 
-    fn get_crud_events_receiver(&self) -> tokio::sync::broadcast::Receiver<CrudEvents> {
+    /// Get a [`tokio::sync::broadcast::Receiver`] of [`CrudEvents`].
+    pub fn get_crud_events_receiver(&self) -> tokio::sync::broadcast::Receiver<CrudEvents> {
         todo!()
     }
 
-    fn get_request_events_receiver(&self) -> tokio::sync::broadcast::Receiver<RequestEvents> {
+    /// Get a [`tokio::sync::broadcast::Receiver`] of [`RequestEvents`]
+    pub fn get_request_events_receiver(&self) -> tokio::sync::broadcast::Receiver<RequestEvents> {
         todo!()
     }
 
-    fn get_conversion_events_receiver(&self) -> tokio::sync::broadcast::Receiver<ConversionEvents> {
+    /// Get a [`tokio::sync::broadcast::Receiver`] of [`ConversionEvents`]
+    pub fn get_conversion_events_receiver(
+        &self,
+    ) -> tokio::sync::broadcast::Receiver<ConversionEvents> {
         todo!()
     }
 
-    fn get_session_events_receiver(&self) -> tokio::sync::broadcast::Receiver<SessionEvents> {
+    /// Get a [`tokio::sync::broadcast::Receiver`] of [`SessionEvents`]
+    pub fn get_session_events_receiver(&self) -> tokio::sync::broadcast::Receiver<SessionEvents> {
         todo!()
     }
 
-    fn changes(&self) -> Box<dyn DatabaseChangesBuilder> {
+    /// Subscribe to change notifications from the server.
+    ///
+    /// If `server` or `node` are [`None`], the default will be selected.
+    pub fn changes(&self) -> DatabaseChangesBuilder {
         todo!()
     }
 }
@@ -142,9 +128,16 @@ pub struct Conventions;
 #[derive(Clone, Debug, Default)]
 pub struct Certificate;
 
-pub trait DatabaseChanges {}
-pub trait DatabaseChangesBuilder {
-    fn server(&self, address: &str) -> Box<dyn DatabaseChangesBuilder>;
-    fn node(&self, node_name: &str) -> Box<dyn DatabaseChangesBuilder>;
-    fn build(&self) -> Box<dyn DatabaseChanges>;
+pub struct DatabaseChanges {}
+pub struct DatabaseChangesBuilder;
+impl DatabaseChangesBuilder {
+    pub fn server(&self, _address: &str) -> DatabaseChangesBuilder {
+        todo!()
+    }
+    pub fn node(&self, _node_name: &str) -> DatabaseChangesBuilder {
+        todo!()
+    }
+    pub fn build(&self) -> DatabaseChanges {
+        todo!()
+    }
 }
