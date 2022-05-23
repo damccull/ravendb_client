@@ -1,9 +1,11 @@
+#[derive(Clone, Debug)]
 pub enum RequestEvents {
     BeforeRequest,
     FailedRequest,
     SucceedRequest,
 }
 
+#[derive(Clone, Debug)]
 pub enum CrudEvents {
     AfterSaveChanges,
     BeforeDelete,
@@ -11,6 +13,7 @@ pub enum CrudEvents {
     BeforeStore,
 }
 
+#[derive(Clone, Debug)]
 pub enum ConversionEvents {
     AfterConversionToDocument,
     AfterConversionToEntity,
@@ -18,6 +21,7 @@ pub enum ConversionEvents {
     BeforeConversionToEntity,
 }
 
+#[derive(Clone, Debug)]
 pub enum SessionEvents {
     SessionClosing,
     SessionCreated,

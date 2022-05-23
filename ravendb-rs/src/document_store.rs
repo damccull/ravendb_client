@@ -1,4 +1,5 @@
 use crate::events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents};
+use tokio::sync::broadcast;
 
 /**
 A [`DocumentStore`] is the main client API object. It establishes and
@@ -39,8 +40,12 @@ let docstore = DefaultDocumentStoreBuilder::new().build();
 docstore.initialize();
 ```
 */
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct DefaultDocumentStore {
+    crud_events_sender: broadcast::Sender<CrudEvents>,
+    request_events_sender: broadcast::Sender<RequestEvents>,
+    conversion_events_sender: broadcast::Sender<ConversionEvents>,
+    session_events_sender: broadcast::Sender<SessionEvents>,
     urls: Vec<String>,
     conventions: Option<Conventions>,
     database: Option<String>,
@@ -58,25 +63,23 @@ impl DefaultDocumentStore {
     }
 
     /// Get a [`tokio::sync::broadcast::Receiver`] of [`CrudEvents`].
-    pub fn get_crud_events_receiver(&self) -> tokio::sync::broadcast::Receiver<CrudEvents> {
-        todo!()
+    pub fn get_crud_events_receiver(&self) -> broadcast::Receiver<CrudEvents> {
+        self.crud_events_sender.subscribe()
     }
 
     /// Get a [`tokio::sync::broadcast::Receiver`] of [`RequestEvents`]
-    pub fn get_request_events_receiver(&self) -> tokio::sync::broadcast::Receiver<RequestEvents> {
-        todo!()
+    pub fn get_request_events_receiver(&self) -> broadcast::Receiver<RequestEvents> {
+        self.request_events_sender.subscribe()
     }
 
     /// Get a [`tokio::sync::broadcast::Receiver`] of [`ConversionEvents`]
-    pub fn get_conversion_events_receiver(
-        &self,
-    ) -> tokio::sync::broadcast::Receiver<ConversionEvents> {
-        todo!()
+    pub fn get_conversion_events_receiver(&self) -> broadcast::Receiver<ConversionEvents> {
+        self.conversion_events_sender.subscribe()
     }
 
     /// Get a [`tokio::sync::broadcast::Receiver`] of [`SessionEvents`]
-    pub fn get_session_events_receiver(&self) -> tokio::sync::broadcast::Receiver<SessionEvents> {
-        todo!()
+    pub fn get_session_events_receiver(&self) -> broadcast::Receiver<SessionEvents> {
+        self.session_events_sender.subscribe()
     }
 
     /// Subscribe to change notifications from the server.
@@ -84,6 +87,24 @@ impl DefaultDocumentStore {
     /// If `server` or `node` are [`None`], the default will be selected.
     pub fn changes(&self) -> DatabaseChangesBuilder {
         todo!()
+    }
+}
+impl Default for DefaultDocumentStore {
+    fn default() -> Self {
+        let (crud_sender, _) = broadcast::channel(100);
+        let (request_sender, _) = broadcast::channel(100);
+        let (conversion_sender, _) = broadcast::channel(100);
+        let (session_sender, _) = broadcast::channel(100);
+        Self {
+            crud_events_sender: crud_sender,
+            request_events_sender: request_sender,
+            conversion_events_sender: conversion_sender,
+            session_events_sender: session_sender,
+            urls: Default::default(),
+            conventions: Default::default(),
+            database: Default::default(),
+            certificate: Default::default(),
+        }
     }
 }
 
@@ -140,4 +161,9 @@ impl DatabaseChangesBuilder {
     pub fn build(&self) -> DatabaseChanges {
         todo!()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::DefaultDocumentStore;
 }
