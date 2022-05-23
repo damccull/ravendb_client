@@ -41,7 +41,7 @@ docstore.initialize();
 ```
 */
 #[derive(Clone, Debug)]
-pub struct DefaultDocumentStore {
+pub struct DocumentStore {
     crud_events_sender: broadcast::Sender<CrudEvents>,
     request_events_sender: broadcast::Sender<RequestEvents>,
     conversion_events_sender: broadcast::Sender<ConversionEvents>,
@@ -51,7 +51,7 @@ pub struct DefaultDocumentStore {
     database: Option<String>,
     certificate: Option<Certificate>,
 }
-impl DefaultDocumentStore {
+impl DocumentStore {
     /// Returns a [`DefaultDocumentStoreBuilder`] to allow configuration
     /// of the DefaultDocumentStore.
     pub fn builder() -> DefaultDocumentStoreBuilder {
@@ -89,7 +89,7 @@ impl DefaultDocumentStore {
         todo!()
     }
 }
-impl Default for DefaultDocumentStore {
+impl Default for DocumentStore {
     fn default() -> Self {
         let (crud_sender, _) = broadcast::channel(100);
         let (request_sender, _) = broadcast::channel(100);
@@ -110,7 +110,7 @@ impl Default for DefaultDocumentStore {
 
 #[derive(Clone, Debug, Default)]
 pub struct DefaultDocumentStoreBuilder {
-    document_store: DefaultDocumentStore,
+    document_store: DocumentStore,
 }
 impl DefaultDocumentStoreBuilder {
     pub fn new() -> Self {
@@ -136,7 +136,7 @@ impl DefaultDocumentStoreBuilder {
         self.document_store.certificate = Some(certificate);
     }
 
-    pub fn build(&self) -> DefaultDocumentStore {
+    pub fn build(&self) -> DocumentStore {
         //TODO: Change this to return a new one instead of clone
         // since clone probably needs to return a reference much
         // like Arc or similar.
@@ -165,5 +165,5 @@ impl DatabaseChangesBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::DefaultDocumentStore;
+    use crate::DocumentStore;
 }
