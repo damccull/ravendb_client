@@ -24,14 +24,14 @@ WIP: It can be cloned cheaply as only a reference is given during clone.
 WIP: The Document Store is thread safe - implemented in a thread safe manner.
 */
 pub trait DocumentStore {
-    /// Register for a [`tokio::sync::broadcast::Receiver`] of [`CrudEvents`].
-    fn register_crud_events(&self) -> tokio::sync::broadcast::Receiver<CrudEvents>;
-    /// Register for a [`tokio::sync::broadcast::Receiver`] of [`RequestEvents`]
-    fn register_request_events(&self) -> tokio::sync::broadcast::Receiver<RequestEvents>;
-    /// Register for a [`tokio::sync::broadcast::Receiver`] of [`ConversionEvents`]
-    fn register_conversion_events(&self) -> tokio::sync::broadcast::Receiver<ConversionEvents>;
-    /// Register for a [`tokio::sync::broadcast::Receiver`] of [`SessionEvents`]
-    fn register_session_events(&self) -> tokio::sync::broadcast::Receiver<SessionEvents>;
+    /// Get a [`tokio::sync::broadcast::Receiver`] of [`CrudEvents`].
+    fn get_crud_events_receiver(&self) -> tokio::sync::broadcast::Receiver<CrudEvents>;
+    /// Get a [`tokio::sync::broadcast::Receiver`] of [`RequestEvents`]
+    fn get_request_events_receiver(&self) -> tokio::sync::broadcast::Receiver<RequestEvents>;
+    /// Get a [`tokio::sync::broadcast::Receiver`] of [`ConversionEvents`]
+    fn get_conversion_events_receiver(&self) -> tokio::sync::broadcast::Receiver<ConversionEvents>;
+    /// Get a [`tokio::sync::broadcast::Receiver`] of [`SessionEvents`]
+    fn get_session_events_receiver(&self) -> tokio::sync::broadcast::Receiver<SessionEvents>;
 
     /// Subscribe to change notifications from the server.
     ///
@@ -70,19 +70,19 @@ impl DocumentStore for DefaultDocumentStore {
         todo!();
     }
 
-    fn register_crud_events(&self) -> tokio::sync::broadcast::Receiver<CrudEvents> {
+    fn get_crud_events_receiver(&self) -> tokio::sync::broadcast::Receiver<CrudEvents> {
         todo!()
     }
 
-    fn register_request_events(&self) -> tokio::sync::broadcast::Receiver<RequestEvents> {
+    fn get_request_events_receiver(&self) -> tokio::sync::broadcast::Receiver<RequestEvents> {
         todo!()
     }
 
-    fn register_conversion_events(&self) -> tokio::sync::broadcast::Receiver<ConversionEvents> {
+    fn get_conversion_events_receiver(&self) -> tokio::sync::broadcast::Receiver<ConversionEvents> {
         todo!()
     }
 
-    fn register_session_events(&self) -> tokio::sync::broadcast::Receiver<SessionEvents> {
+    fn get_session_events_receiver(&self) -> tokio::sync::broadcast::Receiver<SessionEvents> {
         todo!()
     }
 
