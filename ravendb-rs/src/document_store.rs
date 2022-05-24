@@ -9,7 +9,8 @@ pub struct DocumentStore {
 }
 
 impl DocumentStore {
-    //TODO: create a builder to builder this documentstore
+    //TODO: make this documentstore handle into a builder, or create a builder to set defaults and return the handle
+    // after creating the actor. Which is better?
     // This is pub(crate) so only the builder can crank it out
     pub(crate) fn new() -> Self {
         let (sender, receiver) = mpsc::channel(8);
