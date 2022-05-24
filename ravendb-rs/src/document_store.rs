@@ -122,7 +122,8 @@ impl DocumentStore {
         rx.await.expect("DocumentStoreActor task has been killed")
     }
 
-    /// Initialize the [`DocumentStoreActor`] for use.
+    //TODO: Lose "initialize" in favor of having the builder spit out an immutable documentstore
+    ///Initialize the [`DocumentStoreActor`] for use.
     pub async fn initialize(&self) -> Result<(), DocumentStoreError> {
         let (tx, rx) = oneshot::channel();
         let _ = self
