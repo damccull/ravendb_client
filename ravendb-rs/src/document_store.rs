@@ -42,14 +42,16 @@ docstore.initialize();
 */
 #[derive(Clone, Debug)]
 pub struct DocumentStore {
+    conversion_events_sender: broadcast::Sender<ConversionEvents>,
     crud_events_sender: broadcast::Sender<CrudEvents>,
     request_events_sender: broadcast::Sender<RequestEvents>,
-    conversion_events_sender: broadcast::Sender<ConversionEvents>,
     session_events_sender: broadcast::Sender<SessionEvents>,
-    urls: Vec<String>,
+
+    certificate: Option<CertificatePlaceholder>,
     conventions: Option<Conventions>,
     database: Option<String>,
-    certificate: Option<Certificate>,
+    trust_store: Option<CertificatePlaceholder>,
+    urls: Vec<String>,
 }
 impl DocumentStore {
     /// Returns a [`DefaultDocumentStoreBuilder`] to allow configuration
@@ -62,6 +64,11 @@ impl DocumentStore {
         todo!();
     }
 
+    /// Get a [`tokio::sync::broadcast::Receiver`] of [`ConversionEvents`]
+    pub fn get_conversion_events_receiver(&self) -> broadcast::Receiver<ConversionEvents> {
+        self.conversion_events_sender.subscribe()
+    }
+
     /// Get a [`tokio::sync::broadcast::Receiver`] of [`CrudEvents`].
     pub fn get_crud_events_receiver(&self) -> broadcast::Receiver<CrudEvents> {
         self.crud_events_sender.subscribe()
@@ -70,11 +77,6 @@ impl DocumentStore {
     /// Get a [`tokio::sync::broadcast::Receiver`] of [`RequestEvents`]
     pub fn get_request_events_receiver(&self) -> broadcast::Receiver<RequestEvents> {
         self.request_events_sender.subscribe()
-    }
-
-    /// Get a [`tokio::sync::broadcast::Receiver`] of [`ConversionEvents`]
-    pub fn get_conversion_events_receiver(&self) -> broadcast::Receiver<ConversionEvents> {
-        self.conversion_events_sender.subscribe()
     }
 
     /// Get a [`tokio::sync::broadcast::Receiver`] of [`SessionEvents`]
@@ -132,7 +134,7 @@ impl DefaultDocumentStoreBuilder {
     }
 
     /// Set the default document store's certificate.
-    pub fn set_certificate(&mut self, certificate: Certificate) {
+    pub fn set_certificate(&mut self, certificate: CertificatePlaceholder) {
         self.document_store.certificate = Some(certificate);
     }
 
@@ -147,7 +149,7 @@ impl DefaultDocumentStoreBuilder {
 #[derive(Clone, Debug, Default)]
 pub struct Conventions;
 #[derive(Clone, Debug, Default)]
-pub struct Certificate;
+pub struct CertificatePlaceholder;
 
 pub struct DatabaseChanges {}
 pub struct DatabaseChangesBuilder;
