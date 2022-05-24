@@ -16,6 +16,16 @@ impl DocumentStore {
 
         Self { sender }
     }
+
+    /// Initialize the [`DocumentStoreActor`] for use.
+    pub async fn initialize(&self) -> Result<(), DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::Initialize { respond_to: tx })
+            .await;
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
 }
 
 impl Default for DocumentStore {
@@ -64,7 +74,10 @@ impl DocumentStoreActor {
     fn handle_message(&mut self, msg: DocumentStoreMessage) {
         match msg {
             DocumentStoreMessage::Close { respond_to: _ } => todo!(),
-            DocumentStoreMessage::Initialize { respond_to: _ } => todo!(),
+            DocumentStoreMessage::Initialize { respond_to } => {
+                //TODO:  Finish this handler
+                let _ = respond_to.send(Ok(()));
+            }
 
             _ => todo!(),
         }
@@ -106,7 +119,8 @@ enum DocumentStoreMessage {
     },
 
     GetReceiverForConversionEvents {
-        respond_to: oneshot::Sender<Result<broadcast::Receiver<ConversionEvents>, DocumentStoreError>>,
+        respond_to:
+            oneshot::Sender<Result<broadcast::Receiver<ConversionEvents>, DocumentStoreError>>,
     },
     GetReceiverForCrudEvents {
         respond_to: oneshot::Sender<Result<broadcast::Receiver<CrudEvents>, DocumentStoreError>>,
