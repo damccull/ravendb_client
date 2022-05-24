@@ -27,6 +27,8 @@ impl Default for DocumentStore {
 struct DocumentStoreActor {
     receiver: mpsc::Receiver<DocumentStoreMessage>,
 
+    document_store_state: DocumentStoreState,
+
     conversion_events_sender: broadcast::Sender<ConversionEvents>,
     crud_events_sender: broadcast::Sender<CrudEvents>,
     request_events_sender: broadcast::Sender<RequestEvents>,
@@ -46,6 +48,7 @@ impl DocumentStoreActor {
         let (session_sender, _) = broadcast::channel(100);
         Self {
             receiver,
+            document_store_state: DocumentStoreState::Unitilialized,
             crud_events_sender: crud_sender,
             request_events_sender: request_sender,
             conversion_events_sender: conversion_sender,
@@ -60,8 +63,10 @@ impl DocumentStoreActor {
 
     fn handle_message(&mut self, msg: DocumentStoreMessage) {
         match msg {
-            DocumentStoreMessage::Close => todo!(),
-            DocumentStoreMessage::Initialize => todo!(),
+            DocumentStoreMessage::Close { respond_to: _ } => todo!(),
+            DocumentStoreMessage::Initialize { respond_to: _ } => todo!(),
+
+            _ => todo!(),
         }
     }
 }
@@ -73,8 +78,83 @@ async fn run_document_store_actor(mut actor: DocumentStoreActor) {
 }
 
 enum DocumentStoreMessage {
-    Initialize,
-    Close,
+    AggressivelyCache {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+    /// Requests to close its connections and destruct.
+    Close {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+
+    /// Requests the [`DocumentConventions`] for this [`DocumentStore`].
+    GetConventions {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+
+    GetDatabase {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+
+    /// Requests the [`DocumentStoreActor`]'s state.
+    /// Returns: [`DocumentStoreState`]
+    GetDocumentStoreState {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+
+    GetReceiverForConversionEvents {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+    GetReceiverForCrudEvents {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+    GetReceiverForRequestEvents {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+    GetReveiverForSessionEvents {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+
+    /// Requests the urls of all RavenDB nodes.
+    GetUrls {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+
+    /// Requests's [`DocumentSubscriptions`]
+    GetSubscriptions {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    }, // Maybe another actor or stateful struct?
+
+    /// Requests to initialize.
+    Initialize {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+
+    /// Requests to set the conventions provided.
+    SetConventions {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        conventions: DocumentConventions,
+    }, // Maybe another actor or stateful struct?
+
+    SetDatabase {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+
+    /// Requests to set the provided list of urls.
+    SetUrls {
+        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        urls: Vec<Url>,
+    },
+}
+
+pub enum DocumentStoreState {
+    /// [`DocumentStore`] was initialized but has since been closed.
+    Closed,
+
+    /// [`DocumentStore`] is initialized.
+    Initialized,
+
+    /// [`DocumentStore`] has not yet been initialized.
+    Unitilialized,
 }
 
 // Placeholders below
@@ -83,3 +163,7 @@ pub struct CertificatePlaceholder;
 
 pub struct DatabaseChanges;
 pub struct DatabaseChangesBuilder;
+pub struct DocumentConventions;
+pub struct Url;
+
+pub struct DocumentStoreError;
