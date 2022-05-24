@@ -9,6 +9,7 @@ pub struct DocumentStore {
 }
 
 impl DocumentStore {
+    //TODO: create a builder to builder this documentstore
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel(8);
         let actor = DocumentStoreActor::new(receiver);
@@ -72,6 +73,8 @@ impl DocumentStoreActor {
     }
 
     fn handle_message(&mut self, msg: DocumentStoreMessage) {
+        //TODO: Move all these handler boies into functions in their own module or modules and call them
+        // to avoid massive bloat in this match statement
         match msg {
             DocumentStoreMessage::Close { respond_to: _ } => todo!(),
             DocumentStoreMessage::Initialize { respond_to } => {
