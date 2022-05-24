@@ -88,40 +88,44 @@ enum DocumentStoreMessage {
 
     /// Requests the [`DocumentConventions`] for this [`DocumentStore`].
     GetConventions {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<DocumentConventions, DocumentStoreError>>,
     },
 
     GetDatabase {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<Option<String>, DocumentStoreError>>,
+    },
+
+    GetDocumentStoreIdentifier {
+        respond_to: oneshot::Sender<Result<String, DocumentStoreError>>,
     },
 
     /// Requests the [`DocumentStoreActor`]'s state.
     /// Returns: [`DocumentStoreState`]
     GetDocumentStoreState {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<DocumentStoreState>,
     },
 
     GetReceiverForConversionEvents {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<broadcast::Receiver<ConversionEvents>, DocumentStoreError>>,
     },
     GetReceiverForCrudEvents {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<broadcast::Receiver<CrudEvents>, DocumentStoreError>>,
     },
     GetReceiverForRequestEvents {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<broadcast::Receiver<RequestEvents>, DocumentStoreError>>,
     },
     GetReveiverForSessionEvents {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<broadcast::Receiver<SessionEvents>, DocumentStoreError>>,
     },
 
     /// Requests the urls of all RavenDB nodes.
     GetUrls {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<Vec<Url>, DocumentStoreError>>,
     },
 
     /// Requests's [`DocumentSubscriptions`]
     GetSubscriptions {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<Vec<DocumentSubscription>, DocumentStoreError>>,
     }, // Maybe another actor or stateful struct?
 
     /// Requests to initialize.
@@ -131,17 +135,17 @@ enum DocumentStoreMessage {
 
     /// Requests to set the conventions provided.
     SetConventions {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<DocumentConventions, DocumentStoreError>>,
         conventions: DocumentConventions,
     }, // Maybe another actor or stateful struct?
 
     SetDatabase {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<String, DocumentStoreError>>,
     },
 
     /// Requests to set the provided list of urls.
     SetUrls {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+        respond_to: oneshot::Sender<Result<Vec<Url>, DocumentStoreError>>,
         urls: Vec<Url>,
     },
 }
@@ -164,6 +168,7 @@ pub struct CertificatePlaceholder;
 pub struct DatabaseChanges;
 pub struct DatabaseChangesBuilder;
 pub struct DocumentConventions;
+pub struct DocumentSubscription;
 pub struct Url;
 
 pub struct DocumentStoreError;
