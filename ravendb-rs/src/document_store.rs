@@ -90,6 +90,13 @@ impl DocumentStore {
     pub fn changes(&self) -> DatabaseChangesBuilder {
         todo!()
     }
+
+    pub fn set_aggressive_cache_duration(
+        cache_duration: std::time::Duration,
+        database: Option<String>,
+    ) {
+        todo!()
+    }
 }
 impl Default for DocumentStore {
     fn default() -> Self {
@@ -106,6 +113,7 @@ impl Default for DocumentStore {
             conventions: Default::default(),
             database: Default::default(),
             certificate: Default::default(),
+            trust_store: Some(CertificatePlaceholder),
         }
     }
 }
