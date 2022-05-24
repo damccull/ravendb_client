@@ -10,7 +10,8 @@ pub struct DocumentStore {
 
 impl DocumentStore {
     //TODO: create a builder to builder this documentstore
-    pub fn new() -> Self {
+    // This is pub(crate) so only the builder can crank it out
+    pub(crate) fn new() -> Self {
         let (sender, receiver) = mpsc::channel(8);
         let actor = DocumentStoreActor::new(receiver);
         tokio::spawn(run_document_store_actor(actor));
