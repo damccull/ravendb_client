@@ -27,6 +27,14 @@ impl DocumentStore {
             .await;
         rx.await.expect("DocumentStoreActor task has been killed")
     }
+
+    pub async fn get_document_store_state(&self) -> DocumentStoreState {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetDocumentStoreState { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
 }
 
 impl Default for DocumentStore {
@@ -80,6 +88,9 @@ impl DocumentStoreActor {
             DocumentStoreMessage::Initialize { respond_to } => {
                 //TODO:  Finish this handler
                 let _ = respond_to.send(Ok(()));
+            }
+            DocumentStoreMessage::GetDocumentStoreState { respond_to } => {
+                let _ = respond_to.send(self.document_store_state);
             }
 
             _ => todo!(),
@@ -167,6 +178,7 @@ enum DocumentStoreMessage {
     },
 }
 
+#[derive(Clone, Copy)]
 pub enum DocumentStoreState {
     /// [`DocumentStore`] was initialized but has since been closed.
     Closed,
