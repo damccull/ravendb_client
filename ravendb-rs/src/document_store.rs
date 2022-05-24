@@ -18,6 +18,110 @@ impl DocumentStore {
         Self { sender }
     }
 
+    pub async fn aggressively_cache(&self) -> Result<(), DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::AggressivelyCache { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn close(&self) -> Result<(), DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::Close { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_conventions(&self) -> Result<DocumentConventions, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetConventions { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_database(&self) -> Result<Option<String>, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetDatabase { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_document_store_identifier(&self) -> Result<String, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetDocumentStoreIdentifier { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_document_store_state(&self) -> DocumentStoreState {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetDocumentStoreState { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_receiver_for_conversion_events(
+        &self,
+    ) -> Result<broadcast::Receiver<ConversionEvents>, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetReceiverForConversionEvents { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_receiver_for_crud_events(
+        &self,
+    ) -> Result<broadcast::Receiver<CrudEvents>, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetReceiverForCrudEvents { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_receiver_for_request_events(
+        &self,
+    ) -> Result<broadcast::Receiver<RequestEvents>, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetReceiverForRequestEvents { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_receiver_for_session_events(
+        &self,
+    ) -> Result<broadcast::Receiver<SessionEvents>, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetReceiverForSessionEvents { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_urls(&self) -> Result<Vec<Url>, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetUrls { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn get_subscriptions(&self) -> Result<Vec<DocumentSubscription>, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetSubscriptions { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
     /// Initialize the [`DocumentStoreActor`] for use.
     pub async fn initialize(&self) -> Result<(), DocumentStoreError> {
         let (tx, rx) = oneshot::channel();
@@ -28,11 +132,33 @@ impl DocumentStore {
         rx.await.expect("DocumentStoreActor task has been killed")
     }
 
-    pub async fn get_document_store_state(&self) -> DocumentStoreState {
+    pub async fn set_conventions(
+        &self,
+        conventions: DocumentConventions,
+    ) -> Result<DocumentConventions, DocumentStoreError> {
         let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetDocumentStoreState { respond_to: tx });
+        let _ = self.sender.send(DocumentStoreMessage::SetConventions {
+            respond_to: tx,
+            conventions,
+        });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn set_database(&self, database: String) -> Result<String, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.sender.send(DocumentStoreMessage::SetDatabase {
+            respond_to: tx,
+            database,
+        });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    pub async fn set_urls(&self, urls: Vec<Url>) -> Result<Vec<Url>, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.sender.send(DocumentStoreMessage::SetUrls {
+            respond_to: tx,
+            urls,
+        });
         rx.await.expect("DocumentStoreActor task has been killed")
     }
 }
@@ -53,11 +179,11 @@ struct DocumentStoreActor {
     request_events_sender: broadcast::Sender<RequestEvents>,
     session_events_sender: broadcast::Sender<SessionEvents>,
 
-    certificate: Option<CertificatePlaceholder>,
-    conventions: Option<Conventions>,
-    database: Option<String>,
-    trust_store: Option<CertificatePlaceholder>,
-    urls: Vec<String>,
+    _certificate: Option<CertificatePlaceholder>,
+    _conventions: Option<Conventions>,
+    _database: Option<String>,
+    _trust_store: Option<CertificatePlaceholder>,
+    _urls: Vec<String>,
 }
 impl DocumentStoreActor {
     fn new(receiver: mpsc::Receiver<DocumentStoreMessage>) -> Self {
@@ -72,11 +198,11 @@ impl DocumentStoreActor {
             request_events_sender: request_sender,
             conversion_events_sender: conversion_sender,
             session_events_sender: session_sender,
-            urls: Default::default(),
-            conventions: Default::default(),
-            database: Default::default(),
-            certificate: Default::default(),
-            trust_store: Some(CertificatePlaceholder),
+            _urls: Default::default(),
+            _conventions: Default::default(),
+            _database: Default::default(),
+            _certificate: Default::default(),
+            _trust_store: Some(CertificatePlaceholder),
         }
     }
 
@@ -84,16 +210,89 @@ impl DocumentStoreActor {
         //TODO: Move all these handler boies into functions in their own module or modules and call them
         // to avoid massive bloat in this match statement
         match msg {
-            DocumentStoreMessage::Close { respond_to: _ } => todo!(),
-            DocumentStoreMessage::Initialize { respond_to } => {
-                //TODO:  Finish this handler
+            DocumentStoreMessage::Close { respond_to } => {
                 let _ = respond_to.send(Ok(()));
+                todo!();
+            }
+            DocumentStoreMessage::Initialize { respond_to } => {
+                let _ = respond_to.send(Ok(()));
+                todo!();
             }
             DocumentStoreMessage::GetDocumentStoreState { respond_to } => {
                 let _ = respond_to.send(self.document_store_state);
             }
-
-            _ => todo!(),
+            DocumentStoreMessage::AggressivelyCache { respond_to } => {
+                let _ = respond_to.send(Ok(()));
+                todo!();
+            }
+            DocumentStoreMessage::GetConventions { respond_to } => {
+                let result = DocumentConventions;
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::GetDatabase {
+                respond_to: _respond_to,
+            } => {
+                let result = None;
+                let _ = _respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::GetDocumentStoreIdentifier { respond_to } => {
+                let result = "".to_string();
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::GetReceiverForConversionEvents { respond_to } => {
+                let result = self.conversion_events_sender.subscribe();
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::GetReceiverForCrudEvents { respond_to } => {
+                let result = self.crud_events_sender.subscribe();
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::GetReceiverForRequestEvents { respond_to } => {
+                let result = self.request_events_sender.subscribe();
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::GetReceiverForSessionEvents { respond_to } => {
+                let result = self.session_events_sender.subscribe();
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::GetUrls { respond_to } => {
+                let result = Vec::<Url>::new();
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::GetSubscriptions { respond_to } => {
+                let result = Vec::<DocumentSubscription>::new();
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::SetConventions {
+                respond_to,
+                conventions,
+            } => {
+                let result = conventions; // TODO: return this after setting
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::SetDatabase {
+                respond_to,
+                database,
+            } => {
+                let result = database; // TODO: return this after setting
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::SetUrls { respond_to, urls } => {
+                let result = urls; // TODO: return this after setting
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
         }
     }
 }
@@ -142,7 +341,7 @@ enum DocumentStoreMessage {
     GetReceiverForRequestEvents {
         respond_to: oneshot::Sender<Result<broadcast::Receiver<RequestEvents>, DocumentStoreError>>,
     },
-    GetReveiverForSessionEvents {
+    GetReceiverForSessionEvents {
         respond_to: oneshot::Sender<Result<broadcast::Receiver<SessionEvents>, DocumentStoreError>>,
     },
 
@@ -169,6 +368,7 @@ enum DocumentStoreMessage {
 
     SetDatabase {
         respond_to: oneshot::Sender<Result<String, DocumentStoreError>>,
+        database: String,
     },
 
     /// Requests to set the provided list of urls.
