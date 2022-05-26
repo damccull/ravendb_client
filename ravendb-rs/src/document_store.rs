@@ -11,13 +11,6 @@ Only one DocumentStoreActor should exist per cluster when possible to reduce res
 usage. Cloning this handle is very cheap and will not instantiate a new actor in the background.
 It is recommended to clone this handle to each component that needs to talk to the DocumentStoreActor.
 When the last handle goes out of scope and it dropped, the backing actor will also be dropped.
-
-# Example
-```rust
-use ravendb_client::DocumentStore;
-
-let document_store = DocumentStore::new();
-```
 */
 #[derive(Clone)]
 pub struct DocumentStore {
