@@ -337,6 +337,9 @@ async fn run_document_store_actor(mut actor: DocumentStoreActor) {
 }
 
 enum DocumentStoreMessage {
+    //TODO: Consider having all of these just return the json and let the handle do
+    // the data crunching and deserialization to free up the actor's message queue faster
+    // -- may not be necessary with async but look into it
     AggressivelyCache {
         respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
     },
