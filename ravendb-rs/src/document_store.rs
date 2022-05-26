@@ -1,8 +1,11 @@
 use tokio::sync::{broadcast, mpsc, oneshot};
 
-use crate::events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents};
 
 /// This a handle to the actor
+use crate::{
+    events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents},
+    DocumentSession,
+};
 #[derive(Clone)]
 pub struct DocumentStore {
     sender: mpsc::Sender<DocumentStoreMessage>,
@@ -135,6 +138,15 @@ impl DocumentStore {
         rx.await.expect("DocumentStoreActor task has been killed")
     }
 
+    pub async fn open_session(&self) -> Result<DocumentSession, DocumentStoreError> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::OpenSession { respond_to: tx })
+            .await;
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
     pub async fn set_conventions(
         &self,
         conventions: DocumentConventions,
@@ -217,10 +229,6 @@ impl DocumentStoreActor {
                 let _ = respond_to.send(Ok(()));
                 todo!();
             }
-            DocumentStoreMessage::Initialize { respond_to } => {
-                let _ = respond_to.send(Ok(()));
-                todo!();
-            }
             DocumentStoreMessage::GetDocumentStoreState { respond_to } => {
                 let _ = respond_to.send(self.document_store_state);
             }
@@ -272,6 +280,15 @@ impl DocumentStoreActor {
             }
             DocumentStoreMessage::GetSubscriptions { respond_to } => {
                 let result = Vec::<DocumentSubscription>::new();
+                let _ = respond_to.send(Ok(result));
+                todo!();
+            }
+            DocumentStoreMessage::Initialize { respond_to } => {
+                let _ = respond_to.send(Ok(()));
+                todo!();
+            }
+            DocumentStoreMessage::OpenSession { respond_to } => {
+                let result = DocumentSession;
                 let _ = respond_to.send(Ok(result));
                 todo!();
             }
@@ -361,6 +378,10 @@ enum DocumentStoreMessage {
     /// Requests to initialize.
     Initialize {
         respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
+    },
+
+    OpenSession {
+        respond_to: oneshot::Sender<Result<DocumentSession, DocumentStoreError>>,
     },
 
     /// Requests to set the conventions provided.

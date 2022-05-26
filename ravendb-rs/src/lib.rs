@@ -1,7 +1,10 @@
+mod document_session;
 mod document_store;
-pub use document_store::*;
 
 pub mod events;
+
+pub use document_session::*;
+pub use document_store::*;
 
 #[cfg(test)]
 mod tests {
