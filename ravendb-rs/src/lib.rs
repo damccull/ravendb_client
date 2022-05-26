@@ -12,16 +12,16 @@ database. It is considered a unit of work and all changes to a [`DocumentSession
 succeed or fail together.
 
 # Example
-```rust
-use ravendb_client::DocumentStore;
+// ```rust
+// use ravendb_client::DocumentStore;
 
-let document_store = DocumentStore::new();
-let session = document_store.open_session();
+// let document_store = DocumentStore::new();
+// let session = document_store.open_session();
 
-//...update entities here...
+// //...update entities here...
 
-session.save_changes();
-```
+// session.save_changes();
+// ```
 
 When `session` is dropped, it'll close any open handles appropriately on its own.
 */
