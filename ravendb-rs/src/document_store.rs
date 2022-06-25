@@ -20,7 +20,7 @@ impl DocumentStoreBuilder {
 
 /**
 This a handle to the actor.
-Only one DocumentStoreActor should exist per cluster when possible to reduce resource
+Only one DocumentStoreActor should exist per database cluster when possible to reduce resource
 usage. Cloning this handle is very cheap and will not instantiate a new actor in the background.
 It is recommended to clone this handle to each component that needs to talk to the DocumentStoreActor.
 When the last handle goes out of scope and it dropped, the backing actor will also be dropped.
@@ -28,12 +28,12 @@ When the last handle goes out of scope and it dropped, the backing actor will al
 ```rust
 # use tokio_test;
 # tokio_test::block_on(async {
+use ravendb_client::DocumentStore;
 use ravendb_client::DocumentStoreBuilder;
-let document_store = DocumentStoreBuilder::new().initialize();
+
+let document_store: DocumentStore = DocumentStoreBuilder::new().initialize();
 println!("DEBUG: {:?}",document_store);
-
 # })
-
 ```
 */
 #[derive(Clone, Debug)]
