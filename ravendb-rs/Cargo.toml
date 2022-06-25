@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1.18.2", features = ["full"] }
+
+[dev-dependencies]
+tokio-test = { version = "0.4" }
