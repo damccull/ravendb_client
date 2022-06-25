@@ -5,16 +5,38 @@ use crate::{
     DocumentSession,
 };
 
-#[derive(Clone, Debug, Default)]
-pub struct DocumentStoreBuilder {}
+#[derive(Clone, Debug)]
+pub struct DocumentStoreBuilder {
+    async_document_id_generator: String, // TODO: Change this to a trait impl later
+}
 
 impl DocumentStoreBuilder {
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Initializes a new [`DocumentStoreActor`] and retuns a handle to it.
+    ///
+    /// Each call to this will create a new [`DocumentStoreActor`] and return a new handle to it.
+    /// It is not recommended to create more that one per database cluster. This function is allowed
+    /// to be called more than once to the builder can act as a template after being set up once.
     pub fn initialize(&self) -> DocumentStore {
+        // TODO: Assert the configuration supplied is valid
+
+        // TODO: Validate URLS
+        // TODO: Validate certificate has a private key
+
         DocumentStore::new()
+    }
+}
+
+impl Default for DocumentStoreBuilder {
+    fn default() -> Self {
+        // TODO: Create a default async id generator in the Default implementation
+
+        Self {
+            async_document_id_generator: "Temp".to_string(),
+        }
     }
 }
 
