@@ -42,6 +42,7 @@ impl Default for DocumentStoreBuilder {
 
 /**
 This a handle to the actor.
+
 Only one DocumentStoreActor should exist per database cluster when possible to reduce resource
 usage. Cloning this handle is very cheap and will not instantiate a new actor in the background.
 It is recommended to clone this handle to each component that needs to talk to the DocumentStoreActor.
