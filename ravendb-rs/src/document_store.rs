@@ -54,6 +54,7 @@ usage. Cloning this handle is very cheap and will not instantiate a new actor in
 It is recommended to clone this handle to each component that needs to talk to the DocumentStoreActor.
 When the last handle goes out of scope and it dropped, the backing actor will also be dropped.
 
+TODO: Uncomment this example after build function is completed
 ```rust
 // # use tokio_test;
 // # tokio_test::block_on(async {
