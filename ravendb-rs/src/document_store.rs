@@ -20,7 +20,7 @@ impl DocumentStoreBuilder {
     /// Each call to this will create a new [`DocumentStoreActor`] and return a new handle to it.
     /// It is not recommended to create more that one per database cluster. This function is allowed
     /// to be called more than once to the builder can act as a template after being set up once.
-    pub fn initialize(&self) -> DocumentStore {
+    pub fn build(&self) -> DocumentStore {
         // TODO: Assert the configuration supplied is valid
 
         // TODO: Validate URLS
@@ -54,7 +54,7 @@ When the last handle goes out of scope and it dropped, the backing actor will al
 use ravendb_client::DocumentStore;
 use ravendb_client::DocumentStoreBuilder;
 
-let document_store: DocumentStore = DocumentStoreBuilder::new().initialize();
+let document_store: DocumentStore = DocumentStoreBuilder::new().build();
 println!("DEBUG: {:?}",document_store);
 # })
 ```
