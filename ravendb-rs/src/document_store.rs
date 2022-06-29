@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct DocumentStoreBuilder {
-    async_document_id_generator: String, // TODO: Change this to a trait impl later
+    _async_document_id_generator: String, // TODO: Change this to a trait impl later
 }
 
 impl DocumentStoreBuilder {
@@ -35,7 +35,7 @@ impl Default for DocumentStoreBuilder {
         // TODO: Create a default async id generator in the Default implementation
 
         Self {
-            async_document_id_generator: "Temp".to_string(),
+            _async_document_id_generator: "Temp".to_string(),
         }
     }
 }
