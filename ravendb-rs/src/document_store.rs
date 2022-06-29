@@ -55,14 +55,14 @@ It is recommended to clone this handle to each component that needs to talk to t
 When the last handle goes out of scope and it dropped, the backing actor will also be dropped.
 
 ```rust
-# use tokio_test;
-# tokio_test::block_on(async {
-use ravendb_client::DocumentStore;
-use ravendb_client::DocumentStoreBuilder;
+// # use tokio_test;
+// # tokio_test::block_on(async {
+// use ravendb_client::DocumentStore;
+// use ravendb_client::DocumentStoreBuilder;
 
-let document_store: DocumentStore = DocumentStoreBuilder::new().build();
-println!("DEBUG: {:?}",document_store);
-# })
+// let document_store: DocumentStore = DocumentStoreBuilder::new().build();
+// println!("DEBUG: {:?}",document_store);
+// # })
 ```
 */
 #[derive(Clone, Debug)]
