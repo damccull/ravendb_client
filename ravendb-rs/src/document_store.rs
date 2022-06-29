@@ -1,4 +1,5 @@
 use tokio::sync::{broadcast, mpsc, oneshot};
+use url::Url;
 
 use crate::{
     events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents},
@@ -8,6 +9,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct DocumentStoreBuilder {
     _async_document_id_generator: String, // TODO: Change this to a trait impl later
+    document_store_urls: Vec<String>,
 }
 
 impl DocumentStoreBuilder {
@@ -22,8 +24,11 @@ impl DocumentStoreBuilder {
     /// to be called more than once to the builder can act as a template after being set up once.
     pub fn build(&self) -> DocumentStore {
         // TODO: Assert the configuration supplied is valid
+        // Ensure DocumentStore URLs are valid and there is at least one
+        assert!(!self.document_store_urls.is_empty());
 
         // TODO: Validate URLS
+        let _clean_urls = validate_urls(self.document_store_urls.as_slice(), false);
         // TODO: Validate certificate has a private key
 
         DocumentStore::new()
@@ -36,6 +41,7 @@ impl Default for DocumentStoreBuilder {
 
         Self {
             _async_document_id_generator: "Temp".to_string(),
+            document_store_urls: Vec::new(),
         }
     }
 }
@@ -482,6 +488,86 @@ pub struct DatabaseChanges;
 pub struct DatabaseChangesBuilder;
 pub struct DocumentConventions;
 pub struct DocumentSubscription;
-pub struct Url;
-
 pub struct DocumentStoreError;
+
+/// Converts the provided URL strings to a [`Vec`] of [`Url`], ensuring they are a valid format.
+///
+/// Also ensures all provided URL strings use the same schema: either https or http, but never both within the
+/// list.
+fn validate_urls<T>(urls: &[T], require_https: bool) -> anyhow::Result<Vec<Url>>
+where
+    T: AsRef<str>,
+{
+    //let mut clean_urls = Vec::new();
+
+    //TODO: Check URLs are valid
+    //TODO: Check all URLs are either http OR https, no mixing
+
+    let clean_urls = urls
+        .iter()
+        .map(|url| -> anyhow::Result<Url> {
+            let url: Url = match Url::parse(url.as_ref()) {
+                Ok(u) => u,
+                Err(e) => {
+                    return Err(anyhow::anyhow!(
+                        "Invalid URL: {}; container error: {}",
+                        url.as_ref(),
+                        e
+                    ));
+                }
+            };
+            Ok(url)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let desired_scheme = if require_https { "https" } else { "http" };
+
+    for url in &clean_urls {
+        if url.scheme() != desired_scheme {
+            return Err(anyhow::anyhow!("Url does not have correct scheme: {}", url));
+        }
+    }
+
+    Ok(clean_urls)
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(non_snake_case)]
+    use url::Url;
+
+    use super::validate_urls;
+
+    #[test]
+    fn validate_urls_returns_vec_of_URL_for_http_strings() {
+        let baseline_urls = vec![
+            Url::parse("http://starwars.com").unwrap(),
+            Url::parse("http://google.com").unwrap(),
+        ];
+        let urls = vec!["http://starwars.com", "http://google.com"];
+
+        assert_eq!(
+            validate_urls(urls.as_slice(), false).unwrap(),
+            baseline_urls
+        );
+    }
+
+    #[test]
+    fn validate_urls_returns_vec_of_URL_for_https_strings() {
+        let baseline_urls = vec![
+            Url::parse("https://starwars.com").unwrap(),
+            Url::parse("https://google.com").unwrap(),
+        ];
+        let urls = vec!["https://starwars.com", "https://google.com"];
+
+        assert_eq!(validate_urls(urls.as_slice(), true).unwrap(), baseline_urls);
+    }
+
+    #[test]
+    fn validate_urls_fails_for_mixed_http_and_https_strings() {
+        let urls = vec!["https://starwars.com", "http://google.com"];
+
+        assert!(validate_urls(urls.as_slice(), true).is_err());
+        assert!(validate_urls(urls.as_slice(), false).is_err());
+    }
+}
