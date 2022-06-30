@@ -46,14 +46,19 @@ impl DocumentStoreBuilder {
         assert!(!self.document_store_urls.is_empty());
 
         // Validate URLS
-        let _clean_urls = validate_urls(self.document_store_urls.as_slice(), false);
+        let clean_urls = validate_urls(self.document_store_urls.as_slice(), false)?;
 
         // Validate certificate has a private key
         let mut buf = Vec::new();
         File::open(&self.client_certificate_path)?.read_to_end(&mut buf)?;
-        let _identity = reqwest::Identity::from_pem(&buf)?;
+        let identity = reqwest::Identity::from_pem(&buf)?;
 
-        Ok(DocumentStore::new())
+        let initial_config = DocumentStoreInitialConfiguration {
+            cluster_urls: clean_urls,
+            client_certificate: identity,
+        };
+
+        Ok(DocumentStore::new(initial_config))
     }
 }
 
@@ -103,9 +108,9 @@ impl DocumentStore {
     // TODO: make this documentstore handle into a builder, or create a builder to set defaults and return the handle
     // after creating the actor. Which is better?
     // This is pub(crate) so only the builder can crank it out
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(initial_config: DocumentStoreInitialConfiguration) -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let actor = DocumentStoreActor::new(receiver);
+        let actor = DocumentStoreActor::new(receiver, initial_config);
         tokio::spawn(run_document_store_actor(actor));
 
         Self { sender }
@@ -215,17 +220,6 @@ impl DocumentStore {
         rx.await.expect("DocumentStoreActor task has been killed")
     }
 
-    //TODO: Lose "initialize" in favor of having the builder spit out an immutable documentstore
-    ///Initialize the [`DocumentStoreActor`] for use.
-    pub async fn initialize(&self) -> Result<(), DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::Initialize { respond_to: tx })
-            .await;
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
     pub async fn open_session(&self) -> Result<DocumentSession, DocumentStoreError> {
         let (tx, rx) = oneshot::channel();
         let _ = self
@@ -266,12 +260,6 @@ impl DocumentStore {
     }
 }
 
-impl Default for DocumentStore {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 struct DocumentStoreActor {
     receiver: mpsc::Receiver<DocumentStoreMessage>,
 
@@ -289,7 +277,10 @@ struct DocumentStoreActor {
     _urls: Vec<String>,
 }
 impl DocumentStoreActor {
-    fn new(receiver: mpsc::Receiver<DocumentStoreMessage>) -> Self {
+    fn new(
+        receiver: mpsc::Receiver<DocumentStoreMessage>,
+        initial_config: DocumentStoreInitialConfiguration,
+    ) -> Self {
         let (crud_sender, _) = broadcast::channel(100);
         let (request_sender, _) = broadcast::channel(100);
         let (conversion_sender, _) = broadcast::channel(100);
@@ -369,10 +360,6 @@ impl DocumentStoreActor {
             DocumentStoreMessage::GetSubscriptions { respond_to } => {
                 let result = Vec::<DocumentSubscription>::new();
                 let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::Initialize { respond_to } => {
-                let _ = respond_to.send(Ok(()));
                 todo!();
             }
             DocumentStoreMessage::OpenSession { respond_to } => {
@@ -466,11 +453,6 @@ enum DocumentStoreMessage {
         respond_to: oneshot::Sender<Result<Vec<DocumentSubscription>, DocumentStoreError>>,
     }, // Maybe another actor or stateful struct?
 
-    /// Requests to initialize.
-    Initialize {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
-    },
-
     OpenSession {
         respond_to: oneshot::Sender<Result<DocumentSession, DocumentStoreError>>,
     },
@@ -503,6 +485,12 @@ pub enum DocumentStoreState {
 
     /// [`DocumentStore`] has not yet been initialized.
     Unitilialized,
+}
+
+/// Requests to initialize.
+pub(crate) struct DocumentStoreInitialConfiguration {
+    cluster_urls: Vec<Url>,
+    client_certificate: reqwest::Identity,
 }
 
 // Placeholders below
