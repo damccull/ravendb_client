@@ -13,6 +13,7 @@ pub struct DocumentStoreBuilder {
     _async_document_id_generator: String, // TODO: Change this to a trait impl later
     document_store_urls: Vec<String>,
     client_certificate_path: String,
+    require_https: bool,
 }
 
 impl DocumentStoreBuilder {
@@ -35,6 +36,11 @@ impl DocumentStoreBuilder {
         self
     }
 
+    pub fn require_https(mut self) -> DocumentStoreBuilder {
+        self.require_https = true;
+        self
+    }
+
     /// Initializes a new [`DocumentStoreActor`] and retuns a handle to it.
     ///
     /// Each call to this will create a new [`DocumentStoreActor`] and return a new handle to it.
@@ -47,7 +53,7 @@ impl DocumentStoreBuilder {
 
         // Validate URLS
         // TODO: Check if https is required and use the preference
-        let clean_urls = validate_urls(self.document_store_urls.as_slice(), true)?;
+        let clean_urls = validate_urls(self.document_store_urls.as_slice(), self.require_https)?;
 
         // Validate certificate has a private key
         let mut buf = Vec::new();
@@ -72,6 +78,7 @@ impl Default for DocumentStoreBuilder {
             _async_document_id_generator: String::default(),
             document_store_urls: Vec::new(),
             client_certificate_path: String::default(),
+            require_https: false,
         }
     }
 }
