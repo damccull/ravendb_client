@@ -1,3 +1,5 @@
+use std::{fs::File, io::Read};
+
 use tokio::sync::{broadcast, mpsc, oneshot};
 use url::Url;
 
@@ -10,6 +12,7 @@ use crate::{
 pub struct DocumentStoreBuilder {
     _async_document_id_generator: String, // TODO: Change this to a trait impl later
     document_store_urls: Vec<String>,
+    client_certificate_path: String,
 }
 
 impl DocumentStoreBuilder {
@@ -17,31 +20,52 @@ impl DocumentStoreBuilder {
         Self::default()
     }
 
+    pub fn set_urls<T>(mut self, urls: &[T]) -> DocumentStoreBuilder
+    where
+        T: AsRef<str>,
+    {
+        for u in urls {
+            self.document_store_urls.push(u.as_ref().to_string());
+        }
+        self
+    }
+
+    pub fn set_client_certificate(mut self, certificate_path: &str) -> DocumentStoreBuilder {
+        self.client_certificate_path = certificate_path.to_string();
+        self
+    }
+
     /// Initializes a new [`DocumentStoreActor`] and retuns a handle to it.
     ///
     /// Each call to this will create a new [`DocumentStoreActor`] and return a new handle to it.
     /// It is not recommended to create more that one per database cluster. This function is allowed
     /// to be called more than once to the builder can act as a template after being set up once.
-    pub fn build(&self) -> DocumentStore {
+    pub fn build(&self) -> anyhow::Result<DocumentStore> {
         // TODO: Assert the configuration supplied is valid
         // Ensure DocumentStore URLs are valid and there is at least one
         assert!(!self.document_store_urls.is_empty());
 
-        // TODO: Validate URLS
+        // Validate URLS
         let _clean_urls = validate_urls(self.document_store_urls.as_slice(), false);
-        // TODO: Validate certificate has a private key
 
-        DocumentStore::new()
+        // Validate certificate has a private key
+        let mut buf = Vec::new();
+        File::open(&self.client_certificate_path)?.read_to_end(&mut buf)?;
+        let _identity = reqwest::Identity::from_pem(&buf)?;
+
+        Ok(DocumentStore::new())
     }
 }
 
+#[allow(clippy::derivable_impls)] //TODO: Remove this allow when ready
 impl Default for DocumentStoreBuilder {
     fn default() -> Self {
         // TODO: Create a default async id generator in the Default implementation
 
         Self {
-            _async_document_id_generator: "Temp".to_string(),
+            _async_document_id_generator: String::default(),
             document_store_urls: Vec::new(),
+            client_certificate_path: String::default(),
         }
     }
 }
@@ -76,7 +100,7 @@ impl DocumentStore {
         DocumentStoreBuilder::default()
     }
 
-    //TODO: make this documentstore handle into a builder, or create a builder to set defaults and return the handle
+    // TODO: make this documentstore handle into a builder, or create a builder to set defaults and return the handle
     // after creating the actor. Which is better?
     // This is pub(crate) so only the builder can crank it out
     pub(crate) fn new() -> Self {
