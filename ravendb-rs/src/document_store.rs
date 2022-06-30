@@ -46,7 +46,8 @@ impl DocumentStoreBuilder {
         assert!(!self.document_store_urls.is_empty());
 
         // Validate URLS
-        let clean_urls = validate_urls(self.document_store_urls.as_slice(), false)?;
+        // TODO: Check if https is required and use the preference
+        let clean_urls = validate_urls(self.document_store_urls.as_slice(), true)?;
 
         // Validate certificate has a private key
         let mut buf = Vec::new();
@@ -270,11 +271,11 @@ struct DocumentStoreActor {
     request_events_sender: broadcast::Sender<RequestEvents>,
     session_events_sender: broadcast::Sender<SessionEvents>,
 
-    _certificate: Option<CertificatePlaceholder>,
+    _client_certificate: reqwest::Identity,
     _conventions: Option<Conventions>,
     _database: Option<String>,
     _trust_store: Option<CertificatePlaceholder>,
-    _urls: Vec<String>,
+    _urls: Vec<Url>,
 }
 impl DocumentStoreActor {
     fn new(
@@ -292,10 +293,10 @@ impl DocumentStoreActor {
             request_events_sender: request_sender,
             conversion_events_sender: conversion_sender,
             session_events_sender: session_sender,
-            _urls: Default::default(),
+            _urls: initial_config.cluster_urls,
             _conventions: Default::default(),
             _database: Default::default(),
-            _certificate: Default::default(),
+            _client_certificate: initial_config.client_certificate,
             _trust_store: Some(CertificatePlaceholder),
         }
     }
