@@ -1,2 +1,3 @@
 [workspace]
-members = ["ravendb-rs", "xtask"]
+default-members = ["raven-test"]
+members = ["ravendb-rs", "raven-test", "xtask"]
