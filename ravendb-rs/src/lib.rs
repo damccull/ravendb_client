@@ -29,6 +29,7 @@ When `session` is dropped, it'll close any open handles appropriately on its own
 mod document_session;
 mod document_store;
 
+pub mod async_multi_database_hi_lo_id_generator;
 pub mod events;
 
 pub use document_session::*;

@@ -4,13 +4,16 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 use url::Url;
 
 use crate::{
+    async_multi_database_hi_lo_id_generator::{
+        AsyncDocumentIdGenerator, AsyncMultiDatabaseHiLoIdGenerator,
+    },
     events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents},
     DocumentSession,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct DocumentStoreBuilder {
-    _async_document_id_generator: String, // TODO: Change this to a trait impl later
+    async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>, // TODO: Change this to a trait impl later
     document_store_urls: Vec<String>,
     client_certificate_path: String,
     require_https: bool,
@@ -60,7 +63,9 @@ impl DocumentStoreBuilder {
         File::open(&self.client_certificate_path)?.read_to_end(&mut buf)?;
         let identity = reqwest::Identity::from_pem(&buf)?;
 
+        // Create an initial configuration for the DocumentStoreActor
         let initial_config = DocumentStoreInitialConfiguration {
+            async_document_id_generator: self.async_document_id_generator.clone(),
             cluster_urls: clean_urls,
             client_certificate: identity,
         };
@@ -75,7 +80,7 @@ impl Default for DocumentStoreBuilder {
         // TODO: Create a default async id generator in the Default implementation
 
         Self {
-            _async_document_id_generator: String::default(),
+            async_document_id_generator: Box::new(AsyncMultiDatabaseHiLoIdGenerator::default()),
             document_store_urls: Vec::new(),
             client_certificate_path: String::default(),
             require_https: false,
@@ -278,6 +283,7 @@ struct DocumentStoreActor {
     request_events_sender: broadcast::Sender<RequestEvents>,
     session_events_sender: broadcast::Sender<SessionEvents>,
 
+    _async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     _client_certificate: reqwest::Identity,
     _conventions: Option<Conventions>,
     _database: Option<String>,
@@ -300,6 +306,7 @@ impl DocumentStoreActor {
             request_events_sender: request_sender,
             conversion_events_sender: conversion_sender,
             session_events_sender: session_sender,
+            _async_document_id_generator: initial_config.async_document_id_generator,
             _urls: initial_config.cluster_urls,
             _conventions: Default::default(),
             _database: Default::default(),
@@ -497,6 +504,7 @@ pub enum DocumentStoreState {
 
 /// Requests to initialize.
 pub(crate) struct DocumentStoreInitialConfiguration {
+    async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     cluster_urls: Vec<Url>,
     client_certificate: reqwest::Identity,
 }
