@@ -24,7 +24,7 @@ impl DocumentStoreBuilder {
         Self::default()
     }
 
-    pub fn set_urls<T>(mut self, urls: &[T]) -> DocumentStoreBuilder
+    pub fn set_urls<T>(mut self, urls: &[T]) -> Self
     where
         T: AsRef<str>,
     {
@@ -34,8 +34,16 @@ impl DocumentStoreBuilder {
         self
     }
 
-    pub fn set_client_certificate(mut self, certificate_path: &str) -> DocumentStoreBuilder {
+    pub fn set_client_certificate(mut self, certificate_path: &str) -> Self {
         self.client_certificate_path = certificate_path.to_string();
+        self
+    }
+
+    pub fn set_async_document_id_generator(
+        mut self,
+        generator: Box<dyn AsyncDocumentIdGenerator>,
+    ) -> Self {
+        self.async_document_id_generator = generator;
         self
     }
 
