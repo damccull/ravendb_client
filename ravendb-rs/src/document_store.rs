@@ -14,6 +14,7 @@ use crate::{
 #[derive(Debug)]
 pub struct DocumentStoreBuilder {
     async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>, // TODO: Change this to a trait impl later
+    database_name: Option<String>,
     document_store_urls: Vec<String>,
     client_certificate_path: String,
     require_https: bool,
@@ -47,6 +48,11 @@ impl DocumentStoreBuilder {
         self
     }
 
+    pub fn set_database_name(mut self, database_name: &str) -> Self {
+        self.database_name = Some(database_name.to_string());
+        self
+    }
+
     pub fn require_https(mut self) -> DocumentStoreBuilder {
         self.require_https = true;
         self
@@ -74,6 +80,7 @@ impl DocumentStoreBuilder {
         // Create an initial configuration for the DocumentStoreActor
         let initial_config = DocumentStoreInitialConfiguration {
             async_document_id_generator: self.async_document_id_generator.clone(),
+            database_name: self.database_name.clone(),
             cluster_urls: clean_urls,
             client_identity: identity,
         };
@@ -89,6 +96,7 @@ impl Default for DocumentStoreBuilder {
 
         Self {
             async_document_id_generator: Box::new(AsyncMultiDatabaseHiLoIdGenerator::default()),
+            database_name: None,
             document_store_urls: Vec::new(),
             client_certificate_path: String::default(),
             require_https: false,
@@ -294,7 +302,7 @@ struct DocumentStoreActor {
     _async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     _client_identity: reqwest::Identity,
     _conventions: Option<Conventions>,
-    _database: Option<String>,
+    _database_name: Option<String>,
     _trust_store: Option<CertificatePlaceholder>,
     _urls: Vec<Url>,
 }
@@ -317,7 +325,7 @@ impl DocumentStoreActor {
             _async_document_id_generator: initial_config.async_document_id_generator,
             _urls: initial_config.cluster_urls,
             _conventions: Default::default(),
-            _database: Default::default(),
+            _database_name: initial_config.database_name,
             _client_identity: initial_config.client_identity,
             _trust_store: Some(CertificatePlaceholder),
         }
@@ -513,6 +521,7 @@ pub enum DocumentStoreState {
 /// Requests to initialize.
 pub(crate) struct DocumentStoreInitialConfiguration {
     async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
+    database_name: Option<String>,
     cluster_urls: Vec<Url>,
     client_identity: reqwest::Identity,
 }
