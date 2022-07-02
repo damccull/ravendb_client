@@ -75,7 +75,7 @@ impl DocumentStoreBuilder {
         let initial_config = DocumentStoreInitialConfiguration {
             async_document_id_generator: self.async_document_id_generator.clone(),
             cluster_urls: clean_urls,
-            client_certificate: identity,
+            client_identity: identity,
         };
 
         Ok(DocumentStore::new(initial_config))
@@ -292,7 +292,7 @@ struct DocumentStoreActor {
     session_events_sender: broadcast::Sender<SessionEvents>,
 
     _async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
-    _client_certificate: reqwest::Identity,
+    _client_identity: reqwest::Identity,
     _conventions: Option<Conventions>,
     _database: Option<String>,
     _trust_store: Option<CertificatePlaceholder>,
@@ -318,7 +318,7 @@ impl DocumentStoreActor {
             _urls: initial_config.cluster_urls,
             _conventions: Default::default(),
             _database: Default::default(),
-            _client_certificate: initial_config.client_certificate,
+            _client_identity: initial_config.client_identity,
             _trust_store: Some(CertificatePlaceholder),
         }
     }
@@ -514,7 +514,7 @@ pub enum DocumentStoreState {
 pub(crate) struct DocumentStoreInitialConfiguration {
     async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     cluster_urls: Vec<Url>,
-    client_certificate: reqwest::Identity,
+    client_identity: reqwest::Identity,
 }
 
 // Placeholders below
