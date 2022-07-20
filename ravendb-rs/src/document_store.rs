@@ -64,12 +64,10 @@ impl DocumentStoreBuilder {
     /// It is not recommended to create more that one per database cluster. This function is allowed
     /// to be called more than once to the builder can act as a template after being set up once.
     pub fn build(&self) -> anyhow::Result<DocumentStore> {
-        // TODO: Assert the configuration supplied is valid
         // Ensure DocumentStore URLs are valid and there is at least one
         assert!(!self.document_store_urls.is_empty());
 
         // Validate URLS
-        // TODO: Check if https is required and use the preference
         let clean_urls = validate_urls(self.document_store_urls.as_slice(), self.require_https)?;
 
         // Validate certificate has a private key
