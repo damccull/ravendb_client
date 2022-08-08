@@ -530,7 +530,6 @@ pub struct CertificatePlaceholder;
 
 pub struct DatabaseChanges;
 pub struct DatabaseChangesBuilder;
-pub struct DocumentConventions;
 pub struct DocumentSubscription;
 pub struct DocumentStoreError;
 
