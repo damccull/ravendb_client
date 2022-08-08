@@ -8,7 +8,7 @@ use crate::{
         AsyncDocumentIdGenerator, AsyncMultiDatabaseHiLoIdGenerator,
     },
     events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents},
-    DocumentSession,
+    DocumentSession, document_conventions::DocumentConventions,
 };
 
 #[derive(Debug)]
@@ -392,7 +392,7 @@ impl DocumentStoreActor {
                 todo!();
             }
             DocumentStoreMessage::OpenSession { respond_to } => {
-                let result = DocumentSession;
+                let result = DocumentSession::new();
                 let _ = respond_to.send(Ok(result));
                 todo!();
             }
