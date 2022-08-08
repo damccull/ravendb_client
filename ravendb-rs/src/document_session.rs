@@ -1,20 +1,18 @@
 use crate::document_conventions::DocumentConventions;
 
-
 /// Implements Unit of Work for accessing the RavenDB server.
-pub struct DocumentSession{
-    document_conventions: DocumentConventions
+pub struct DocumentSession {
+    document_conventions: DocumentConventions,
 }
 
 impl DocumentSession {
-
     pub fn new() -> Self {
-        Self{document_conventions: DocumentConventions}
+        Self {
+            document_conventions: DocumentConventions,
+        }
     }
 
-
     // ------ BELOW CODE FROM IDocumentSession.cs ------ //
-
 
     /// Marks the specified entity for deletion.
     ///

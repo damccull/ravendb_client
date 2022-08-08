@@ -7,8 +7,9 @@ use crate::{
     async_multi_database_hi_lo_id_generator::{
         AsyncDocumentIdGenerator, AsyncMultiDatabaseHiLoIdGenerator,
     },
+    document_conventions::DocumentConventions,
     events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents},
-    DocumentSession, document_conventions::DocumentConventions,
+    DocumentSession,
 };
 
 #[derive(Debug)]
