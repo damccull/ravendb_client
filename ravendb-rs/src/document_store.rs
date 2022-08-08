@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct DocumentStoreBuilder {
-    async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>, // TODO: Change this to a trait impl later
+    async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>, // TODO: Change this to a trait impl later if possible
     database_name: Option<String>,
     document_store_urls: Vec<String>,
     client_certificate_path: String,
