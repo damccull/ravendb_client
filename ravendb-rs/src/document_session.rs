@@ -7,9 +7,15 @@ pub struct DocumentSession{
 }
 
 impl DocumentSession {
+
     pub fn new() -> Self {
         Self{document_conventions: DocumentConventions}
     }
+
+
+    // ------ BELOW CODE FROM IDocumentSession.cs ------ //
+
+
     /// Marks the specified entity for deletion.
     ///
     /// Does not delete it immediately but only when
