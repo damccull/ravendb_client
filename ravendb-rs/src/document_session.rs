@@ -1,3 +1,5 @@
+
+/// Implements Unit of Work for accessing the RavenDB server.
 pub struct DocumentSession;
 
 impl DocumentSession {

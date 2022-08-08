@@ -70,7 +70,7 @@ impl DocumentStoreBuilder {
         // Validate URLS
         let clean_urls = validate_urls(self.document_store_urls.as_slice(), self.require_https)?;
 
-        // Validate certificate has a private key
+        // Open and validate certificate, and create an identity from it
         let mut buf = Vec::new();
         File::open(&self.client_certificate_path)?.read_to_end(&mut buf)?;
         let identity = reqwest::Identity::from_pem(&buf)?;
