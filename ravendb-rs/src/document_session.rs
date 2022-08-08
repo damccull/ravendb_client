@@ -2,13 +2,14 @@ use crate::document_conventions::DocumentConventions;
 
 /// Implements Unit of Work for accessing the RavenDB server.
 pub struct DocumentSession {
-    document_conventions: DocumentConventions,
+    _document_conventions: DocumentConventions,
 }
 
 impl DocumentSession {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            document_conventions: DocumentConventions,
+            _document_conventions: DocumentConventions,
         }
     }
 
