@@ -1,0 +1,35 @@
+    client_session_id: isize,
+    deleted_entities: Vec<Entity>,
+    request_executor: RequestExecutor,
+    operation_executor: OperationExecutor,
+    pending_lazy_operations: Vec<LazyOperation>,
+    on_evaluate_lazy: HashMap<LazyOperation, Box<dyn Fn() + Send>>,
+    generate_document_keys_on_store: bool,
+    session_info: SessionInfo,
+    save_changes_options: BatchOptions,
+    is_disposed: bool,
+    id: String,
+    on_before_store: Vec<PlaceholderType>,
+    on_after_save_changes: Vec<PlaceholderType>,
+    on_before_delete: Vec<PlaceholderType>,
+    on_before_query: Vec<PlaceholderType>,
+    // ids of entities that were deleted
+    known_missing_ids: Vec<String>, // Must be case-insensitive; TODO: make a newtype
+    documents_by_id: DocumentsById,
+    // Translate between an ID and its associate entity,
+    // TODO: ensure case is ignored in the key
+    included_documents_by_id: HashMap<String, DocumentInfo>,
+    // Hold the data required to manage the data for RavenDB's Unit of Work
+    documents_by_entity: Vec<DocumentInfo>,
+    document_store: DocumentStore,
+    /// The name of the database this session will use. Defaults to the DocumentStore's
+    /// database name if not changed.
+    database_name: String,
+    number_of_requests: isize,
+    conventions: DocumentConventions,
+    max_number_of_requests_per_session: usize,
+    use_optimistic_concurrency: bool,
+    deferred_commands: Vec<PlaceholderType>,
+    deferred_commands_map: HashMap<IdTypeAndName, CommandData>,
+    generate_entity_id_on_the_client: GenerateEntityIdOnTheClient,
+    entity_to_json: EntityToJson, 
