@@ -15,15 +15,13 @@ pub struct DocumentSession {
     operation_executor: OperationExecutor,
     release_operation_context: PlaceholderType, //TODO: This is "IDisposable" in C#, meaning we need to ensure destructor runs?
     context: JsonOperationContext,
-    pending_lazy_operations: Vec<Box<dyn LazyOperation>>,
-    on_evaluate_lazy: HashMap<Box<dyn LazyOperation>, Action<PlaceholderType>>, // PlaceHolderType here is 'object' in C#, meaning any type at all. How do I do that here?
+    pending_lazy_operations: Vec<Box<dyn LazyOperation + Send>>,
+    on_evaluate_lazy: HashMap<Box<dyn LazyOperation + Send>, Action<PlaceholderType>>, // PlaceHolderType here is 'object' in C#, meaning any type at all. How do I do that here?
     instances_counter: i32,
     hash: i32,
     generate_document_ids_on_store: bool,
     session_info: SessionInfo,
-
     // -- END: From InMemoryDocumentSessionOperations.cs
-    
 
     // -- START: From InMemoryDocumentSessionOperations.Patch.cs
     // -- END: From InMemoryDocumentSessionOperations.Patch.cs
@@ -160,7 +158,7 @@ pub struct DocumentSessionError;
 struct Entity;
 struct RequestExecutor;
 struct OperationExecutor;
-trait LazyOperation{}
+trait LazyOperation {}
 struct SessionInfo;
 struct BatchOptions;
 struct PlaceholderType;
@@ -174,4 +172,6 @@ pub struct ResponseTimeInformation;
 struct Stopwatch;
 struct GetRequest;
 struct JsonOperationContext;
-struct Action<T>;
+struct Action<T> {
+    phantom: T,
+}
