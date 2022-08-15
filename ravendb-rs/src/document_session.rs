@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{document_conventions::DocumentConventions, DocumentStore};
 
@@ -7,6 +7,7 @@ mod session_impls;
 /// Implements Unit of Work for accessing the RavenDB server.
 pub struct DocumentSession {
     document_conventions: DocumentConventions,
+    options: SessionOptions, // TODO: Replace any of the below props with props from this struct where possible
 
     // -- START: From InMemoryDocumentSessionOperations.cs
     async_task_counter: i64, //TODO: See if this can be u32 or u64. Probably never negative.
@@ -21,6 +22,30 @@ pub struct DocumentSession {
     hash: i32,
     generate_document_ids_on_store: bool,
     session_info: SessionInfo,
+    save_changes_options: BatchOptions,
+    disable_atomic_cluster_writes_in_cluster_wide_transaction: bool,
+    transaction_mode: TransactionMode,
+    is_disposed: bool, // Check if this is even necessary; ideally, not, just nuke the struct entirely
+    json_serializer: PlaceholderType, // IJsonSerializer in C#, probably some serde_json thing
+    /// The session id
+    id: Guid,
+    // TODO: Likely replace these handlers with messages in a queue and use message handling instead
+    event_handler_on_before_start: PlaceholderType,
+    event_handler_on_after_save_changes: PlaceholderType,
+    event_handler_on_before_delete: PlaceholderType,
+    event_handler_on_before_query: PlaceholderType,
+    event_handler_on_before_conversion_to_documnet: PlaceholderType,
+    event_handler_on_after_converion_to_document: PlaceholderType,  
+    event_handler_on_before_conversion_to_entity: PlaceholderType,
+    event_handler_on_after_conversion_to_entity: PlaceholderType,
+    event_handler_on_session_disposing: PlaceholderType,
+    /// Entities whose id we know no longer exists because they are a missing include or a missing load, etc.
+    known_missing_ids: HashSet<String>,
+    external_state: HashMap<String, PlaceholderType>, // placeholder here is 'object' in C#; TODO: figure out what this holds
+
+
+
+
     // -- END: From InMemoryDocumentSessionOperations.cs
 
     // -- START: From InMemoryDocumentSessionOperations.Patch.cs
@@ -175,3 +200,6 @@ struct JsonOperationContext;
 struct Action<T> {
     phantom: T,
 }
+struct SessionOptions;
+struct TransactionMode;
+struct Guid;
