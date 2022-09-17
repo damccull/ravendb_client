@@ -1,6 +1,5 @@
 mod session_impls;
 
-
 /// Implements Unit of Work for accessing the RavenDB server.
 #[derive(Debug)]
 pub struct DocumentSession {}
