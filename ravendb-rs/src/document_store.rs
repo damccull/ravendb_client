@@ -8,6 +8,7 @@ use crate::{
         AsyncDocumentIdGenerator, AsyncMultiDatabaseHiLoIdGenerator,
     },
     document_conventions::DocumentConventions,
+    error_chain_fmt,
     events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents},
     DocumentSession,
 };
@@ -395,7 +396,6 @@ impl DocumentStoreActor {
             DocumentStoreMessage::OpenSession { respond_to } => {
                 let result = DocumentSession::new();
                 let _ = respond_to.send(Ok(result));
-                todo!();
             }
             DocumentStoreMessage::SetConventions {
                 respond_to,
@@ -532,7 +532,17 @@ pub struct CertificatePlaceholder;
 pub struct DatabaseChanges;
 pub struct DatabaseChangesBuilder;
 pub struct DocumentSubscription;
-pub struct DocumentStoreError;
+
+#[derive(thiserror::Error)]
+pub enum DocumentStoreError {
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
+}
+impl std::fmt::Debug for DocumentStoreError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        error_chain_fmt(self, f)
+    }
+}
 
 /// Converts the provided URL strings to a [`Vec`] of [`Url`], ensuring they are a valid format.
 ///
