@@ -4,48 +4,32 @@ use std::process::{Command, ExitStatus, Stdio};
 use crate::DynError;
 
 pub fn ci() -> Result<(), DynError> {
-    println!("Running `cargo check`...");
-    let cargo_check_status = Command::new("cargo")
-        .args(["check", "-p", "ravendb-client"])
-        .stdout(Stdio::inherit())
-        .status()?;
+    let tasks = vec![
+        ("cargo check on code", vec!["check"]),
+        ("cargo check on examples", vec!["check", "--examples"]),
+        ("cargo clippy", vec!["clippy"]),
+        ("cargo build", vec!["build"]),
+        ("cargo build on examples", vec!["build", "--examples"]),
+        ("cargo test", vec!["test"]),
+        ("cargo test on examples", vec!["test", "--examples"]),
+        ("cargo audit", vec!["audit"]),
+        ("cargo fmt", vec!["fmt"]),
+    ];
 
-    println!("Running `cargo clippy`...");
-    let cargo_clippy_status = Command::new("cargo")
-        .args(["clippy", "-p", "ravendb-client"])
-        .stdout(Stdio::inherit())
-        .status()?;
-
-    println!("Running `cargo build`...");
-    let cargo_build_status = Command::new("cargo")
-        .args(["build", "-p", "ravendb-client"])
-        .stdout(Stdio::inherit())
-        .status()?;
-
-    println!("Running `cargo test`...");
-    let cargo_test_status = Command::new("cargo")
-        .args(["test", "-p", "ravendb-client"])
-        .stdout(Stdio::inherit())
-        .status()?;
-
-    println!("Running `cargo audit`...");
-    let cargo_audit_status = Command::new("cargo")
-        .args(["audit"])
-        .stdout(Stdio::inherit())
-        .status()?;
-
-    println!("Running `cargo fmt`...");
-    let cargo_fmt_status = Command::new("cargo")
-        .args(["fmt"])
-        .stdout(Stdio::inherit())
-        .status()?;
-
-    print_error_with_status_code("cargo check", cargo_check_status);
-    print_error_with_status_code("cargo clippy", cargo_clippy_status);
-    print_error_with_status_code("cargo build", cargo_build_status);
-    print_error_with_status_code("cargo test", cargo_test_status);
-    print_error_with_status_code("cargo audit", cargo_audit_status);
-    print_error_with_status_code("cargo fmt", cargo_fmt_status);
+    for (name, args) in tasks {
+        let mut cmd = cargo_command(args);
+        println!(
+            "{}{}{}",
+            "Running ".truecolor(255, 165, 0),
+            name.truecolor(255, 165, 0),
+            "...".truecolor(255, 165, 0)
+        );
+        let status = cmd.status()?;
+        print_error_with_status_code(name, status);
+        if !status.success() {
+            break;
+        }
+    }
 
     Ok(())
 }
@@ -63,4 +47,10 @@ fn print_error_with_status_code(task: &str, status: ExitStatus) {
             code
         );
     }
+}
+
+fn cargo_command(args: Vec<&str>) -> Command {
+    let mut cmd = Command::new("cargo");
+    cmd.args(args).stdout(Stdio::inherit());
+    cmd
 }
