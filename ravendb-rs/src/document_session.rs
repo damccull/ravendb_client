@@ -1,3 +1,5 @@
+use tracing::instrument;
+
 mod session_impls;
 
 /// Implements Unit of Work for accessing the RavenDB server.
@@ -10,8 +12,12 @@ impl DocumentSession {
         Self {}
     }
 
+    #[instrument(name = "GET_RAVENDB_VERSION", skip(self))]
     pub async fn get_ravendb_version(&self) -> anyhow::Result<RavenDbVersion> {
-        todo!()
+        Err(anyhow::anyhow!(
+            "Error getting the RavenDB version. There is no code to connect, yet!"
+        ))
+        //todo!()
     }
 }
 

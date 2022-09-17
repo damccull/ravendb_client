@@ -16,8 +16,15 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
     //dbg!(&client);
     let session = client.open_session().await?;
-    let rdb_version = session.get_ravendb_version().await?;
-    dbg!(&rdb_version);
+    // let rdb_version = session.get_ravendb_version().await?;
+    match session.get_ravendb_version().await {
+        Ok(version) => dbg!(version),
+        Err(e) => {
+            tracing::error!("Error happened: {}", &e);
+            return Err(e);
+        }
+    };
+
     Ok(())
 }
 
