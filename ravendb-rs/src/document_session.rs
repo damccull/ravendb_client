@@ -10,4 +10,11 @@ impl DocumentSession {
     pub fn new() -> Self {
         Self {}
     }
+
+    pub async fn get_ravendb_version(&self) -> anyhow::Result<RavenDbVersion> {
+        todo!()
+    }
 }
+
+#[derive(Debug)]
+pub struct RavenDbVersion(String);

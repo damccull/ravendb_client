@@ -8,8 +8,9 @@ async fn main() -> anyhow::Result<()> {
         .require_https()
         .set_urls(&urls)
         .build()?;
-    dbg!(&client);
+    //dbg!(&client);
     let session = client.open_session().await?;
-    dbg!(&session);
+    let rdb_version = session.get_ravendb_version().await?;
+    dbg!(&rdb_version);
     Ok(())
 }
