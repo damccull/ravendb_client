@@ -6,6 +6,9 @@ edition = "2021"
 [[example]]
 name = "demo"
 
+[[example]]
+name = "sandbox"
+
 [dependencies]
 anyhow = "1.0.65"
 dyn-clone = "1.0.9"

@@ -1,6 +1,7 @@
 use std::{fs::File, io::Read};
 
 use tokio::sync::{broadcast, mpsc, oneshot};
+use tracing::instrument;
 use url::Url;
 
 use crate::{
@@ -10,12 +11,13 @@ use crate::{
     document_conventions::DocumentConventions,
     error_chain_fmt,
     events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents},
+    raven_command::RavenCommand,
     DocumentSession,
 };
 
 #[derive(Debug)]
 pub struct DocumentStoreBuilder {
-    async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>, // TODO: Change this to a trait impl later if possible
+    //async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>, // TODO: Change this to a trait impl later if possible
     database_name: Option<String>,
     document_store_urls: Vec<String>,
     client_certificate_path: String,
@@ -42,13 +44,13 @@ impl DocumentStoreBuilder {
         self
     }
 
-    pub fn set_async_document_id_generator(
-        mut self,
-        generator: Box<dyn AsyncDocumentIdGenerator>,
-    ) -> Self {
-        self.async_document_id_generator = generator;
-        self
-    }
+    // pub fn set_async_document_id_generator(
+    //     mut self,
+    //     generator: Box<dyn AsyncDocumentIdGenerator>,
+    // ) -> Self {
+    //     self.async_document_id_generator = generator;
+    //     self
+    // }
 
     pub fn set_database_name(mut self, database_name: &str) -> Self {
         self.database_name = Some(database_name.to_string());
@@ -79,7 +81,7 @@ impl DocumentStoreBuilder {
 
         // Create an initial configuration for the DocumentStoreActor
         let initial_config = DocumentStoreInitialConfiguration {
-            async_document_id_generator: self.async_document_id_generator.clone(),
+            //async_document_id_generator: self.async_document_id_generator.clone(),
             database_name: self.database_name.clone(),
             cluster_urls: clean_urls,
             client_identity: identity,
@@ -95,7 +97,7 @@ impl Default for DocumentStoreBuilder {
         // TODO: Create a default async id generator in the Default implementation
 
         Self {
-            async_document_id_generator: Box::new(AsyncMultiDatabaseHiLoIdGenerator::default()),
+            //async_document_id_generator: Box::new(AsyncMultiDatabaseHiLoIdGenerator::default()),
             database_name: None,
             document_store_urls: Vec::new(),
             client_certificate_path: String::default(),
@@ -158,6 +160,19 @@ impl DocumentStore {
         let _ = self
             .sender
             .send(DocumentStoreMessage::Close { respond_to: tx });
+        rx.await.expect("DocumentStoreActor task has been killed")
+    }
+
+    #[instrument(name = "ACTOR HANDLE - Execute Raven Command", skip(self))]
+    pub async fn execute_raven_command(
+        &self,
+        raven_command: RavenCommand,
+    ) -> Result<reqwest::Response, anyhow::Error> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.sender.send(DocumentStoreMessage::ExecuteRavenCommand {
+            raven_command,
+            respond_to: tx,
+        });
         rx.await.expect("DocumentStoreActor task has been killed")
     }
 
@@ -250,12 +265,14 @@ impl DocumentStore {
     }
 
     pub async fn open_session(&self) -> Result<DocumentSession, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::OpenSession { respond_to: tx })
-            .await;
-        rx.await.expect("DocumentStoreActor task has been killed")
+        // let (tx, rx) = oneshot::channel();
+        // let _ = self
+        //     .sender
+        //     .send(DocumentStoreMessage::OpenSession { respond_to: tx })
+        //     .await;
+        //rx.await.expect("DocumentStoreActor task has been killed")
+        let session = DocumentSession::new(self.clone());
+        Ok(session)
     }
 
     pub async fn set_conventions(
@@ -299,7 +316,7 @@ struct DocumentStoreActor {
     request_events_sender: broadcast::Sender<RequestEvents>,
     session_events_sender: broadcast::Sender<SessionEvents>,
 
-    _async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
+    //_async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     _client_identity: reqwest::Identity,
     _conventions: Option<Conventions>,
     _database_name: Option<String>,
@@ -322,7 +339,7 @@ impl DocumentStoreActor {
             request_events_sender: request_sender,
             conversion_events_sender: conversion_sender,
             session_events_sender: session_sender,
-            _async_document_id_generator: initial_config.async_document_id_generator,
+            //_async_document_id_generator: initial_config.async_document_id_generator,
             _urls: initial_config.cluster_urls,
             _conventions: Default::default(),
             _database_name: initial_config.database_name,
@@ -331,7 +348,8 @@ impl DocumentStoreActor {
         }
     }
 
-    fn handle_message(&mut self, msg: DocumentStoreMessage) {
+    #[instrument(name = "DocumentStore Actor - Handle Message", skip(self))]
+    async fn handle_message(&mut self, msg: DocumentStoreMessage) {
         //TODO: Move all these handler boies into functions in their own module or modules and call them
         // to avoid massive bloat in this match statement
         match msg {
@@ -339,12 +357,17 @@ impl DocumentStoreActor {
                 let _ = respond_to.send(Ok(()));
                 todo!();
             }
-            DocumentStoreMessage::GetDocumentStoreState { respond_to } => {
-                let _ = respond_to.send(self.document_store_state);
-            }
+
             DocumentStoreMessage::AggressivelyCache { respond_to } => {
                 let _ = respond_to.send(Ok(()));
                 todo!();
+            }
+            DocumentStoreMessage::ExecuteRavenCommand {
+                raven_command,
+                respond_to,
+            } => {
+                let result = self.execute_raven_command(raven_command).await;
+                let _ = respond_to.send(result);
             }
             DocumentStoreMessage::GetConventions { respond_to } => {
                 let result = DocumentConventions;
@@ -357,6 +380,9 @@ impl DocumentStoreActor {
                 let result = None;
                 let _ = _respond_to.send(Ok(result));
                 todo!();
+            }
+            DocumentStoreMessage::GetDocumentStoreState { respond_to } => {
+                let _ = respond_to.send(self.document_store_state);
             }
             DocumentStoreMessage::GetDocumentStoreIdentifier { respond_to } => {
                 let result = "".to_string();
@@ -393,10 +419,10 @@ impl DocumentStoreActor {
                 let _ = respond_to.send(Ok(result));
                 todo!();
             }
-            DocumentStoreMessage::OpenSession { respond_to } => {
-                let result = DocumentSession::new();
-                let _ = respond_to.send(Ok(result));
-            }
+            // DocumentStoreMessage::OpenSession { respond_to } => {
+            //     let result = DocumentSession::new(self.clone());
+            //     let _ = respond_to.send(Ok(result));
+            // }
             DocumentStoreMessage::SetConventions {
                 respond_to,
                 conventions,
@@ -420,14 +446,29 @@ impl DocumentStoreActor {
             }
         }
     }
-}
 
-async fn run_document_store_actor(mut actor: DocumentStoreActor) {
-    while let Some(msg) = actor.receiver.recv().await {
-        actor.handle_message(msg);
+    #[instrument(name = "DocumentStore Actor - Execute Raven Command", skip(self))]
+    async fn execute_raven_command(
+        &self,
+        raven_command: RavenCommand,
+    ) -> anyhow::Result<reqwest::Response> {
+        let client = reqwest::Client::builder()
+            .identity(self._client_identity.clone())
+            .build()?;
+        let response = client.execute(raven_command.get_http_request()?).await?;
+
+        Ok(response)
     }
 }
 
+#[instrument(name = "Run Document Store Actor", skip(actor))]
+async fn run_document_store_actor(mut actor: DocumentStoreActor) {
+    while let Some(msg) = actor.receiver.recv().await {
+        actor.handle_message(msg).await;
+    }
+}
+
+#[derive(Debug)]
 enum DocumentStoreMessage {
     //TODO: Consider having all of these just return the json and let the handle do
     // the data crunching and deserialization to free up the actor's message queue faster
@@ -439,7 +480,12 @@ enum DocumentStoreMessage {
     Close {
         respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
     },
-
+    /// Executes the provided [`RavenCommand`].
+    ExecuteRavenCommand {
+        raven_command: RavenCommand,
+        // TODO: Change this to a DocumentStoreError or maybe a RavenError
+        respond_to: oneshot::Sender<Result<reqwest::Response, anyhow::Error>>,
+    },
     /// Requests the [`DocumentConventions`] for this [`DocumentStore`].
     GetConventions {
         respond_to: oneshot::Sender<Result<DocumentConventions, DocumentStoreError>>,
@@ -483,10 +529,9 @@ enum DocumentStoreMessage {
         respond_to: oneshot::Sender<Result<Vec<DocumentSubscription>, DocumentStoreError>>,
     }, // Maybe another actor or stateful struct?
 
-    OpenSession {
-        respond_to: oneshot::Sender<Result<DocumentSession, DocumentStoreError>>,
-    },
-
+    // OpenSession {
+    //     respond_to: oneshot::Sender<Result<DocumentSession, DocumentStoreError>>,
+    // },
     /// Requests to set the conventions provided.
     SetConventions {
         respond_to: oneshot::Sender<Result<DocumentConventions, DocumentStoreError>>,
@@ -505,7 +550,7 @@ enum DocumentStoreMessage {
     },
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum DocumentStoreState {
     /// [`DocumentStore`] was initialized but has since been closed.
     Closed,
@@ -519,18 +564,21 @@ pub enum DocumentStoreState {
 
 /// Requests to initialize.
 pub(crate) struct DocumentStoreInitialConfiguration {
-    async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
+    //async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     database_name: Option<String>,
     cluster_urls: Vec<Url>,
     client_identity: reqwest::Identity,
 }
 
 // Placeholders below
+#[derive(Debug)]
 pub struct Conventions;
 pub struct CertificatePlaceholder;
 
 pub struct DatabaseChanges;
 pub struct DatabaseChangesBuilder;
+
+#[derive(Debug)]
 pub struct DocumentSubscription;
 
 #[derive(thiserror::Error)]

@@ -1,8 +1,11 @@
+use std::{thread, time::Duration};
+
 use ravendb_client::DocumentStoreBuilder;
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
+
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -14,17 +17,16 @@ async fn main() -> anyhow::Result<()> {
         .require_https()
         .set_urls(&urls)
         .build()?;
-    //dbg!(&client);
     let session = client.open_session().await?;
-    // let rdb_version = session.get_ravendb_version().await?;
-    match session.get_ravendb_version().await {
-        Ok(version) => dbg!(version),
+    match session.get_cluster_topology().await {
+        Ok(topology_string) => dbg!(topology_string),
         Err(e) => {
             tracing::error!("Error happened: {}", &e);
             return Err(e);
         }
     };
 
+    //thread::sleep(Duration::from_secs(2));
     Ok(())
 }
 
