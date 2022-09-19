@@ -1,6 +1,7 @@
 use std::{fs::File, io::Read};
 
 use anyhow::Context;
+use rand::seq::SliceRandom;
 use tokio::sync::{mpsc, oneshot};
 use tracing::instrument;
 use url::Url;
@@ -53,14 +54,26 @@ impl DocumentStoreBuilder {
     pub fn build(&self) -> anyhow::Result<DocumentStore> {
         // Ensure DocumentStore URLs are valid and there is at least one
         assert!(!self.document_store_urls.is_empty());
+        // Ensure the only valid combination of https and certificate path is TRUE and a valid path
+        if self.require_https {
+            assert!(!self.client_certificate_path.is_empty());
+        }
+        if !self.require_https {
+            assert!(self.client_certificate_path.is_empty());
+        }
 
         // Validate URLS
         let clean_urls = validate_urls(self.document_store_urls.as_slice(), self.require_https)?;
 
-        // Open and validate certificate, and create an identity from it
-        let mut buf = Vec::new();
-        File::open(&self.client_certificate_path)?.read_to_end(&mut buf)?;
-        let identity = reqwest::Identity::from_pem(&buf)?;
+        let identity = if self.require_https {
+            // Open and validate certificate, and create an identity from it
+            let mut buf = Vec::new();
+            File::open(&self.client_certificate_path)?.read_to_end(&mut buf)?;
+            let identity = reqwest::Identity::from_pem(&buf)?;
+            Some(identity)
+        } else {
+            None
+        };
 
         // Create an initial configuration for the DocumentStoreActor
         let initial_config = DocumentStoreInitialConfiguration {
@@ -149,6 +162,17 @@ impl DocumentStore {
         rx.await?.context("DocumentStoreActor task has been killed")
     }
 
+    #[instrument(name = "ACTOR HANDLE - Get Server Address", skip(self))]
+    pub async fn get_server_address(&self) -> anyhow::Result<Url> {
+        tracing::debug!("Getting a server address");
+        let (tx, rx) = oneshot::channel();
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetServerAddress { respond_to: tx })
+            .await;
+        rx.await?.context("DocumentStoreActor task has been killed")
+    }
+
     pub async fn open_session(&self) -> Result<DocumentSession, DocumentStoreError> {
         let session = DocumentSession::new(self.clone());
         Ok(session)
@@ -158,11 +182,11 @@ impl DocumentStore {
 struct DocumentStoreActor {
     receiver: mpsc::Receiver<DocumentStoreMessage>,
     //_async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
-    _client_identity: reqwest::Identity,
+    client_identity: Option<reqwest::Identity>,
     _conventions: Option<Conventions>,
     _database_name: Option<String>,
     _trust_store: Option<CertificatePlaceholder>,
-    _urls: Vec<Url>,
+    urls: Vec<Url>,
 }
 impl DocumentStoreActor {
     fn new(
@@ -172,10 +196,10 @@ impl DocumentStoreActor {
         Self {
             receiver,
             //_async_document_id_generator: initial_config.async_document_id_generator,
-            _urls: initial_config.cluster_urls,
+            urls: initial_config.cluster_urls,
             _conventions: Default::default(),
             _database_name: initial_config.database_name,
-            _client_identity: initial_config.client_identity,
+            client_identity: initial_config.client_identity,
             _trust_store: Some(CertificatePlaceholder),
         }
     }
@@ -192,6 +216,10 @@ impl DocumentStoreActor {
                 let result = self.execute_raven_command(raven_command).await;
                 let _ = respond_to.send(result);
             }
+            DocumentStoreMessage::GetServerAddress { respond_to } => {
+                let result = self.get_server_address().await;
+                let _ = respond_to.send(result);
+            }
         }
     }
 
@@ -200,13 +228,24 @@ impl DocumentStoreActor {
         &self,
         raven_command: RavenCommand,
     ) -> anyhow::Result<reqwest::Response> {
-        let client = reqwest::Client::builder()
-            .identity(self._client_identity.clone())
-            .use_rustls_tls()
-            .build()?;
+        let mut client = reqwest::Client::builder();
+
+        if let Some(identity) = &self.client_identity {
+            client = client.identity(identity.clone()).use_rustls_tls();
+        }
+
+        let client = client.build()?;
         let response = client.execute(raven_command.get_http_request()?).await?;
 
         Ok(response)
+    }
+
+    #[instrument(name = "DocumentStore Actor - Get Server Address", skip(self))]
+    async fn get_server_address(&self) -> anyhow::Result<Url> {
+        self.urls
+            .choose(&mut rand::thread_rng())
+            .ok_or_else(|| anyhow::anyhow!("Urls list is empty"))
+            .cloned()
     }
 }
 
@@ -228,6 +267,9 @@ enum DocumentStoreMessage {
         // TODO: Change this to a DocumentStoreError or maybe a RavenError
         respond_to: oneshot::Sender<Result<reqwest::Response, anyhow::Error>>,
     },
+    GetServerAddress {
+        respond_to: oneshot::Sender<Result<Url, anyhow::Error>>,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -247,7 +289,7 @@ pub(crate) struct DocumentStoreInitialConfiguration {
     //async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     database_name: Option<String>,
     cluster_urls: Vec<Url>,
-    client_identity: reqwest::Identity,
+    client_identity: Option<reqwest::Identity>,
 }
 
 // Placeholders below
@@ -318,6 +360,8 @@ mod tests {
     #![allow(non_snake_case)]
     use url::Url;
 
+    use crate::DocumentStoreBuilder;
+
     use super::validate_urls;
 
     #[test]
@@ -351,5 +395,40 @@ mod tests {
 
         assert!(validate_urls(urls.as_slice(), true).is_err());
         assert!(validate_urls(urls.as_slice(), false).is_err());
+    }
+
+    #[tokio::test]
+    async fn documentstorebuilder_build_succeeds_for_valid_configuration() {
+        let urls = ["https://localhost:8080"];
+
+        let document_store = DocumentStoreBuilder::new()
+            .set_client_certificate("../free.damccull.client.certificate.pem")
+            .require_https()
+            .set_urls(&urls)
+            .build();
+
+        assert!(document_store.is_ok());
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn documentstorebuilder_build_fails_if_requires_https_but_no_certificate() {
+        let urls = ["https://localhost:8080"];
+
+        let _document_store = DocumentStoreBuilder::new()
+            .require_https()
+            .set_urls(&urls)
+            .build();
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn documentstorebuilder_build_fails_if_certificate_supplied_but_https_not_required() {
+        let urls = ["http://localhost:8080"];
+
+        let _document_store = DocumentStoreBuilder::new()
+            .set_urls(&urls)
+            .set_client_certificate("../free.damccull.client.certificate.pem")
+            .build();
     }
 }

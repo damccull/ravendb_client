@@ -1,8 +1,7 @@
 use tracing::instrument;
-use url::Url;
 
 use crate::{
-    raven_command::{HttpMethod, RavenCommand, RavenCommandOption},
+    raven_command::{RavenCommand, RavenCommandVariant},
     DocumentStore,
 };
 
@@ -24,11 +23,8 @@ impl DocumentSession {
     pub async fn get_cluster_topology(&self) -> anyhow::Result<String> {
         //let server = self.document_store.get_urls();
         let raven_command = RavenCommand {
-            base_server_url: Url::parse("https://a.free.damccull.ravendb.cloud")?,
-            //endpoint: "/cluster/topology".to_string(),
-            http_method: HttpMethod::Get,
-            headers: Vec::new(),
-            command: RavenCommandOption::GetClusterTopology,
+            base_server_url: self.document_store.get_server_address().await?,
+            command: RavenCommandVariant::GetClusterTopology,
         };
 
         let response = self

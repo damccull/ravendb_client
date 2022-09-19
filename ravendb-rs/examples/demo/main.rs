@@ -10,10 +10,11 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 async fn main() -> anyhow::Result<()> {
     setup_tracing();
 
-    let urls = ["https://a.free.damccull.ravendb.cloud"];
+    //let urls = ["https://a.free.damccull.ravendb.cloud"];
+    let urls = ["http://localhost:8080"];
     let document_store = DocumentStoreBuilder::new()
-        .set_client_certificate("free.damccull.client.certificate.pem")
-        .require_https()
+        //.set_client_certificate("free.damccull.client.certificate.pem")
+        //.require_https()
         .set_urls(&urls)
         .build()?;
     let session = document_store.open_session().await?;

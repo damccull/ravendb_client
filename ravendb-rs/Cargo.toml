@@ -17,6 +17,7 @@ thiserror = "1.0.35"
 tracing = { version = "0.1.36", features = ["log"] }
 tokio = { version = "1.21.1", features = ["full"] }
 url = { version = "2.3.1", features = ["serde"] }
+rand = "0.8.5"
 
 [dev-dependencies]
 tokio-test = { version = "0.4" }
