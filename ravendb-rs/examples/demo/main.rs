@@ -1,5 +1,3 @@
-use std::{thread, time::Duration};
-
 use ravendb_client::DocumentStoreBuilder;
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
@@ -26,7 +24,6 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    thread::sleep(Duration::from_secs(2));
     Ok(())
 }
 
