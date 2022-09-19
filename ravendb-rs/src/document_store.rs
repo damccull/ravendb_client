@@ -213,6 +213,9 @@ impl DocumentStoreActor {
                 raven_command,
                 respond_to,
             } => {
+                //TODO: Convert this to a tokio spawn and send the respond_to to the helper fn instead
+                // of responding here. This will allow the system to spin of a bunch of simultaneous
+                // RavenCommands.
                 let result = self.execute_raven_command(raven_command).await;
                 let _ = respond_to.send(result);
             }
