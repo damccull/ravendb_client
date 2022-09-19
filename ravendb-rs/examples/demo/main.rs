@@ -12,7 +12,6 @@ async fn main() -> anyhow::Result<()> {
     //let urls = ["http://localhost:8080"];
     let document_store = DocumentStoreBuilder::new()
         .set_client_certificate("ravendb-client_dev_cert.pem")
-        .require_https()
         .set_urls(&urls)
         .build()?;
     let session = document_store.open_session().await?;

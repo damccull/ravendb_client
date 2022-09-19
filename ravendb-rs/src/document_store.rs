@@ -12,8 +12,7 @@ use crate::{error_chain_fmt, raven_command::RavenCommand, DocumentSession};
 pub struct DocumentStoreBuilder {
     database_name: Option<String>,
     document_store_urls: Vec<String>,
-    client_certificate_path: String,
-    require_https: bool,
+    client_certificate_path: Option<String>,
 }
 
 impl DocumentStoreBuilder {
@@ -32,17 +31,12 @@ impl DocumentStoreBuilder {
     }
 
     pub fn set_client_certificate(mut self, certificate_path: &str) -> Self {
-        self.client_certificate_path = certificate_path.to_string();
+        self.client_certificate_path = Some(certificate_path.to_string());
         self
     }
 
     pub fn set_database_name(mut self, database_name: &str) -> Self {
         self.database_name = Some(database_name.to_string());
-        self
-    }
-
-    pub fn require_https(mut self) -> DocumentStoreBuilder {
-        self.require_https = true;
         self
     }
 
@@ -54,25 +48,22 @@ impl DocumentStoreBuilder {
     pub fn build(&self) -> anyhow::Result<DocumentStore> {
         // Ensure DocumentStore URLs are valid and there is at least one
         assert!(!self.document_store_urls.is_empty());
-        // Ensure the only valid combination of https and certificate path is TRUE and a valid path
-        if self.require_https {
-            assert!(!self.client_certificate_path.is_empty());
-        }
-        if !self.require_https {
-            assert!(self.client_certificate_path.is_empty());
-        }
 
         // Validate URLS
-        let clean_urls = validate_urls(self.document_store_urls.as_slice(), self.require_https)?;
+        let clean_urls = validate_urls(
+            self.document_store_urls.as_slice(),
+            self.client_certificate_path.is_some(),
+        )?;
 
-        let identity = if self.require_https {
-            // Open and validate certificate, and create an identity from it
-            let mut buf = Vec::new();
-            File::open(&self.client_certificate_path)?.read_to_end(&mut buf)?;
-            let identity = reqwest::Identity::from_pem(&buf)?;
-            Some(identity)
-        } else {
-            None
+        let identity = match &self.client_certificate_path {
+            Some(certpath) => {
+                // Open and validate certificate, and create an identity from it
+                let mut buf = Vec::new();
+                File::open(certpath)?.read_to_end(&mut buf)?;
+                let id = reqwest::Identity::from_pem(&buf)?;
+                Some(id)
+            }
+            None => None,
         };
 
         // Create an initial configuration for the DocumentStoreActor
@@ -96,8 +87,7 @@ impl Default for DocumentStoreBuilder {
             //async_document_id_generator: Box::new(AsyncMultiDatabaseHiLoIdGenerator::default()),
             database_name: None,
             document_store_urls: Vec::new(),
-            client_certificate_path: String::default(),
-            require_https: false,
+            client_certificate_path: None,
         }
     }
 }
@@ -405,8 +395,7 @@ mod tests {
         let urls = ["https://localhost:8080"];
 
         let document_store = DocumentStoreBuilder::new()
-            .set_client_certificate("../free.damccull.client.certificate.pem")
-            .require_https()
+            .set_client_certificate("../ravendb-client_dev_cert.pem")
             .set_urls(&urls)
             .build();
 
@@ -414,24 +403,15 @@ mod tests {
     }
 
     #[tokio::test]
-    #[should_panic]
-    async fn documentstorebuilder_build_fails_if_requires_https_but_no_certificate() {
+    async fn documentstorebuilder_build_fails_for_invalid_pem() {
         let urls = ["https://localhost:8080"];
 
-        let _document_store = DocumentStoreBuilder::new()
-            .require_https()
+        let document_store = DocumentStoreBuilder::new()
+            // README.md is not a valid PEM file
+            .set_client_certificate("../README.md")
             .set_urls(&urls)
             .build();
-    }
 
-    #[tokio::test]
-    #[should_panic]
-    async fn documentstorebuilder_build_fails_if_certificate_supplied_but_https_not_required() {
-        let urls = ["http://localhost:8080"];
-
-        let _document_store = DocumentStoreBuilder::new()
-            .set_urls(&urls)
-            .set_client_certificate("../free.damccull.client.certificate.pem")
-            .build();
+        assert!(document_store.is_err());
     }
 }
