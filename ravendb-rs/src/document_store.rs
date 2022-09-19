@@ -206,7 +206,7 @@ impl DocumentStoreActor {
 
     #[instrument(name = "DocumentStore Actor - Handle Message", skip(self))]
     async fn handle_message(&mut self, msg: DocumentStoreMessage) {
-        //TODO: Move all these handler boies into functions in their own module or modules and call them
+        //TODO: Move all these handler bodies into functions in their own module or modules and call them
         // to avoid massive bloat in this match statement
         match msg {
             DocumentStoreMessage::ExecuteRavenCommand {
