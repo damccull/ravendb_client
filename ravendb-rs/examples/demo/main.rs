@@ -6,18 +6,17 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     setup_tracing();
 
     let urls = ["https://a.free.damccull.ravendb.cloud"];
-    let client = DocumentStoreBuilder::new()
+    let document_store = DocumentStoreBuilder::new()
         .set_client_certificate("free.damccull.client.certificate.pem")
         .require_https()
         .set_urls(&urls)
         .build()?;
-    let session = client.open_session().await?;
+    let session = document_store.open_session().await?;
     match session.get_cluster_topology().await {
         Ok(topology_string) => dbg!(topology_string),
         Err(e) => {
@@ -26,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    //thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(2));
     Ok(())
 }
 

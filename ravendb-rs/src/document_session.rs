@@ -19,7 +19,7 @@ impl DocumentSession {
 
     #[instrument(name = "GET_RAVENDB_CLUSTER_TOPOLOGY", skip(self))]
     pub async fn get_cluster_topology(&self) -> anyhow::Result<String> {
-        let server = self.document_store.get_urls();
+        //let server = self.document_store.get_urls();
         let raven_command = RavenCommand {
             base_server_url: Url::parse("https://a.free.damccull.ravendb.cloud")?,
             //endpoint: "/cluster/topology".to_string(),

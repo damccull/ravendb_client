@@ -1,23 +1,14 @@
 use std::{fs::File, io::Read};
 
-use tokio::sync::{broadcast, mpsc, oneshot};
+use anyhow::Context;
+use tokio::sync::{mpsc, oneshot};
 use tracing::instrument;
 use url::Url;
 
-use crate::{
-    async_multi_database_hi_lo_id_generator::{
-        AsyncDocumentIdGenerator, AsyncMultiDatabaseHiLoIdGenerator,
-    },
-    document_conventions::DocumentConventions,
-    error_chain_fmt,
-    events::{ConversionEvents, CrudEvents, RequestEvents, SessionEvents},
-    raven_command::RavenCommand,
-    DocumentSession,
-};
+use crate::{error_chain_fmt, raven_command::RavenCommand, DocumentSession};
 
 #[derive(Debug)]
 pub struct DocumentStoreBuilder {
-    //async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>, // TODO: Change this to a trait impl later if possible
     database_name: Option<String>,
     document_store_urls: Vec<String>,
     client_certificate_path: String,
@@ -43,14 +34,6 @@ impl DocumentStoreBuilder {
         self.client_certificate_path = certificate_path.to_string();
         self
     }
-
-    // pub fn set_async_document_id_generator(
-    //     mut self,
-    //     generator: Box<dyn AsyncDocumentIdGenerator>,
-    // ) -> Self {
-    //     self.async_document_id_generator = generator;
-    //     self
-    // }
 
     pub fn set_database_name(mut self, database_name: &str) -> Self {
         self.database_name = Some(database_name.to_string());
@@ -147,175 +130,33 @@ impl DocumentStore {
         Self { sender }
     }
 
-    pub async fn aggressively_cache(&self) -> Result<(), DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::AggressivelyCache { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn close(&self) -> Result<(), DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::Close { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
     #[instrument(name = "ACTOR HANDLE - Execute Raven Command", skip(self))]
     pub async fn execute_raven_command(
         &self,
         raven_command: RavenCommand,
     ) -> Result<reqwest::Response, anyhow::Error> {
+        tracing::debug!("Creating oneshot channel");
         let (tx, rx) = oneshot::channel();
-        let _ = self.sender.send(DocumentStoreMessage::ExecuteRavenCommand {
-            raven_command,
-            respond_to: tx,
-        });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_conventions(&self) -> Result<DocumentConventions, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
+        tracing::debug!("Sending message to actor");
         let _ = self
             .sender
-            .send(DocumentStoreMessage::GetConventions { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_database(&self) -> Result<Option<String>, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetDatabase { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_document_store_identifier(&self) -> Result<String, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetDocumentStoreIdentifier { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_document_store_state(&self) -> DocumentStoreState {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetDocumentStoreState { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_receiver_for_conversion_events(
-        &self,
-    ) -> Result<broadcast::Receiver<ConversionEvents>, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetReceiverForConversionEvents { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_receiver_for_crud_events(
-        &self,
-    ) -> Result<broadcast::Receiver<CrudEvents>, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetReceiverForCrudEvents { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_receiver_for_request_events(
-        &self,
-    ) -> Result<broadcast::Receiver<RequestEvents>, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetReceiverForRequestEvents { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_receiver_for_session_events(
-        &self,
-    ) -> Result<broadcast::Receiver<SessionEvents>, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetReceiverForSessionEvents { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_urls(&self) -> Result<Vec<Url>, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetUrls { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn get_subscriptions(&self) -> Result<Vec<DocumentSubscription>, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::GetSubscriptions { respond_to: tx });
-        rx.await.expect("DocumentStoreActor task has been killed")
+            .send(DocumentStoreMessage::ExecuteRavenCommand {
+                raven_command,
+                respond_to: tx,
+            })
+            .await;
+        tracing::debug!("Waiting for oneshot to return");
+        rx.await?.context("DocumentStoreActor task has been killed")
     }
 
     pub async fn open_session(&self) -> Result<DocumentSession, DocumentStoreError> {
-        // let (tx, rx) = oneshot::channel();
-        // let _ = self
-        //     .sender
-        //     .send(DocumentStoreMessage::OpenSession { respond_to: tx })
-        //     .await;
-        //rx.await.expect("DocumentStoreActor task has been killed")
         let session = DocumentSession::new(self.clone());
         Ok(session)
-    }
-
-    pub async fn set_conventions(
-        &self,
-        conventions: DocumentConventions,
-    ) -> Result<DocumentConventions, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self.sender.send(DocumentStoreMessage::SetConventions {
-            respond_to: tx,
-            conventions,
-        });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn set_database(&self, database: String) -> Result<String, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self.sender.send(DocumentStoreMessage::SetDatabase {
-            respond_to: tx,
-            database,
-        });
-        rx.await.expect("DocumentStoreActor task has been killed")
-    }
-
-    pub async fn set_urls(&self, urls: Vec<Url>) -> Result<Vec<Url>, DocumentStoreError> {
-        let (tx, rx) = oneshot::channel();
-        let _ = self.sender.send(DocumentStoreMessage::SetUrls {
-            respond_to: tx,
-            urls,
-        });
-        rx.await.expect("DocumentStoreActor task has been killed")
     }
 }
 
 struct DocumentStoreActor {
     receiver: mpsc::Receiver<DocumentStoreMessage>,
-
-    document_store_state: DocumentStoreState,
-
-    conversion_events_sender: broadcast::Sender<ConversionEvents>,
-    crud_events_sender: broadcast::Sender<CrudEvents>,
-    request_events_sender: broadcast::Sender<RequestEvents>,
-    session_events_sender: broadcast::Sender<SessionEvents>,
-
     //_async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     _client_identity: reqwest::Identity,
     _conventions: Option<Conventions>,
@@ -328,17 +169,8 @@ impl DocumentStoreActor {
         receiver: mpsc::Receiver<DocumentStoreMessage>,
         initial_config: DocumentStoreInitialConfiguration,
     ) -> Self {
-        let (crud_sender, _) = broadcast::channel(100);
-        let (request_sender, _) = broadcast::channel(100);
-        let (conversion_sender, _) = broadcast::channel(100);
-        let (session_sender, _) = broadcast::channel(100);
         Self {
             receiver,
-            document_store_state: DocumentStoreState::Unitilialized,
-            crud_events_sender: crud_sender,
-            request_events_sender: request_sender,
-            conversion_events_sender: conversion_sender,
-            session_events_sender: session_sender,
             //_async_document_id_generator: initial_config.async_document_id_generator,
             _urls: initial_config.cluster_urls,
             _conventions: Default::default(),
@@ -353,96 +185,12 @@ impl DocumentStoreActor {
         //TODO: Move all these handler boies into functions in their own module or modules and call them
         // to avoid massive bloat in this match statement
         match msg {
-            DocumentStoreMessage::Close { respond_to } => {
-                let _ = respond_to.send(Ok(()));
-                todo!();
-            }
-
-            DocumentStoreMessage::AggressivelyCache { respond_to } => {
-                let _ = respond_to.send(Ok(()));
-                todo!();
-            }
             DocumentStoreMessage::ExecuteRavenCommand {
                 raven_command,
                 respond_to,
             } => {
                 let result = self.execute_raven_command(raven_command).await;
                 let _ = respond_to.send(result);
-            }
-            DocumentStoreMessage::GetConventions { respond_to } => {
-                let result = DocumentConventions;
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::GetDatabase {
-                respond_to: _respond_to,
-            } => {
-                let result = None;
-                let _ = _respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::GetDocumentStoreState { respond_to } => {
-                let _ = respond_to.send(self.document_store_state);
-            }
-            DocumentStoreMessage::GetDocumentStoreIdentifier { respond_to } => {
-                let result = "".to_string();
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::GetReceiverForConversionEvents { respond_to } => {
-                let result = self.conversion_events_sender.subscribe();
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::GetReceiverForCrudEvents { respond_to } => {
-                let result = self.crud_events_sender.subscribe();
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::GetReceiverForRequestEvents { respond_to } => {
-                let result = self.request_events_sender.subscribe();
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::GetReceiverForSessionEvents { respond_to } => {
-                let result = self.session_events_sender.subscribe();
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::GetUrls { respond_to } => {
-                let result = Vec::<Url>::new();
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::GetSubscriptions { respond_to } => {
-                let result = Vec::<DocumentSubscription>::new();
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            // DocumentStoreMessage::OpenSession { respond_to } => {
-            //     let result = DocumentSession::new(self.clone());
-            //     let _ = respond_to.send(Ok(result));
-            // }
-            DocumentStoreMessage::SetConventions {
-                respond_to,
-                conventions,
-            } => {
-                let result = conventions; // TODO: return this after setting
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::SetDatabase {
-                respond_to,
-                database,
-            } => {
-                let result = database; // TODO: return this after setting
-                let _ = respond_to.send(Ok(result));
-                todo!();
-            }
-            DocumentStoreMessage::SetUrls { respond_to, urls } => {
-                let result = urls; // TODO: return this after setting
-                let _ = respond_to.send(Ok(result));
-                todo!();
             }
         }
     }
@@ -454,6 +202,7 @@ impl DocumentStoreActor {
     ) -> anyhow::Result<reqwest::Response> {
         let client = reqwest::Client::builder()
             .identity(self._client_identity.clone())
+            .use_rustls_tls()
             .build()?;
         let response = client.execute(raven_command.get_http_request()?).await?;
 
@@ -473,80 +222,11 @@ enum DocumentStoreMessage {
     //TODO: Consider having all of these just return the json and let the handle do
     // the data crunching and deserialization to free up the actor's message queue faster
     // -- may not be necessary with async but look into it
-    AggressivelyCache {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
-    },
-    /// Requests to close its connections and destruct.
-    Close {
-        respond_to: oneshot::Sender<Result<(), DocumentStoreError>>,
-    },
     /// Executes the provided [`RavenCommand`].
     ExecuteRavenCommand {
         raven_command: RavenCommand,
         // TODO: Change this to a DocumentStoreError or maybe a RavenError
         respond_to: oneshot::Sender<Result<reqwest::Response, anyhow::Error>>,
-    },
-    /// Requests the [`DocumentConventions`] for this [`DocumentStore`].
-    GetConventions {
-        respond_to: oneshot::Sender<Result<DocumentConventions, DocumentStoreError>>,
-    },
-
-    GetDatabase {
-        respond_to: oneshot::Sender<Result<Option<String>, DocumentStoreError>>,
-    },
-
-    GetDocumentStoreIdentifier {
-        respond_to: oneshot::Sender<Result<String, DocumentStoreError>>,
-    },
-
-    /// Requests the [`DocumentStoreActor`]'s state.
-    /// Returns: [`DocumentStoreState`]
-    GetDocumentStoreState {
-        respond_to: oneshot::Sender<DocumentStoreState>,
-    },
-
-    GetReceiverForConversionEvents {
-        respond_to:
-            oneshot::Sender<Result<broadcast::Receiver<ConversionEvents>, DocumentStoreError>>,
-    },
-    GetReceiverForCrudEvents {
-        respond_to: oneshot::Sender<Result<broadcast::Receiver<CrudEvents>, DocumentStoreError>>,
-    },
-    GetReceiverForRequestEvents {
-        respond_to: oneshot::Sender<Result<broadcast::Receiver<RequestEvents>, DocumentStoreError>>,
-    },
-    GetReceiverForSessionEvents {
-        respond_to: oneshot::Sender<Result<broadcast::Receiver<SessionEvents>, DocumentStoreError>>,
-    },
-
-    /// Requests the urls of all RavenDB nodes.
-    GetUrls {
-        respond_to: oneshot::Sender<Result<Vec<Url>, DocumentStoreError>>,
-    },
-
-    /// Requests's [`DocumentSubscriptions`]
-    GetSubscriptions {
-        respond_to: oneshot::Sender<Result<Vec<DocumentSubscription>, DocumentStoreError>>,
-    }, // Maybe another actor or stateful struct?
-
-    // OpenSession {
-    //     respond_to: oneshot::Sender<Result<DocumentSession, DocumentStoreError>>,
-    // },
-    /// Requests to set the conventions provided.
-    SetConventions {
-        respond_to: oneshot::Sender<Result<DocumentConventions, DocumentStoreError>>,
-        conventions: DocumentConventions,
-    }, // Maybe another actor or stateful struct?
-
-    SetDatabase {
-        respond_to: oneshot::Sender<Result<String, DocumentStoreError>>,
-        database: String,
-    },
-
-    /// Requests to set the provided list of urls.
-    SetUrls {
-        respond_to: oneshot::Sender<Result<Vec<Url>, DocumentStoreError>>,
-        urls: Vec<Url>,
     },
 }
 
