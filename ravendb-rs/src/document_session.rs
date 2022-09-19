@@ -1,7 +1,10 @@
 use tracing::instrument;
 use url::Url;
 
-use crate::{raven_command::{RavenCommand, HttpMethod, RavenCommandOption}, DocumentStore};
+use crate::{
+    raven_command::{HttpMethod, RavenCommand, RavenCommandOption},
+    DocumentStore,
+};
 
 mod session_impls;
 
@@ -28,7 +31,10 @@ impl DocumentSession {
             command: RavenCommandOption::GetClusterTopology,
         };
 
-        let response = self.document_store.execute_raven_command(raven_command).await?;
+        let response = self
+            .document_store
+            .execute_raven_command(raven_command)
+            .await?;
 
         let body = response.text().await?;
         Ok(body)
