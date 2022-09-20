@@ -154,6 +154,7 @@ impl DocumentStore {
     ) -> Result<reqwest::Response, anyhow::Error> {
         tracing::debug!("Creating oneshot channel");
         let (tx, rx) = oneshot::channel();
+
         tracing::debug!("Sending message to actor");
         let _ = self
             .sender
@@ -162,6 +163,7 @@ impl DocumentStore {
                 respond_to: tx,
             })
             .await;
+
         tracing::debug!("Waiting for oneshot to return");
         rx.await?.context("DocumentStoreActor task has been killed")
     }
