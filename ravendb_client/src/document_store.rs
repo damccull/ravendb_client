@@ -374,8 +374,14 @@ mod tests {
     fn validate_urls_returns_correct_HashMap_for_http_strings() {
         // Arrange
         let mut baseline_urls = HashMap::<String, Url>::new();
-        baseline_urls.insert("A".to_string(), Url::parse("http://starwars.com").unwrap());
-        baseline_urls.insert("B".to_string(), Url::parse("http://google.com").unwrap());
+        baseline_urls.insert(
+            "http://starwars.com/".to_string(),
+            Url::parse("http://starwars.com").unwrap(),
+        );
+        baseline_urls.insert(
+            "http://google.com/".to_string(),
+            Url::parse("http://google.com").unwrap(),
+        );
 
         let urls = vec!["http://starwars.com", "http://google.com"];
 
@@ -389,8 +395,14 @@ mod tests {
     fn validate_urls_returns_correct_HashMap_for_https_strings() {
         // Arrange
         let mut baseline_urls = HashMap::<String, Url>::new();
-        baseline_urls.insert("A".to_string(), Url::parse("https://starwars.com").unwrap());
-        baseline_urls.insert("B".to_string(), Url::parse("https://google.com").unwrap());
+        baseline_urls.insert(
+            "https://starwars.com/".to_string(),
+            Url::parse("https://starwars.com").unwrap(),
+        );
+        baseline_urls.insert(
+            "https://google.com/".to_string(),
+            Url::parse("https://google.com").unwrap(),
+        );
 
         let urls = vec!["https://starwars.com", "https://google.com"];
 
