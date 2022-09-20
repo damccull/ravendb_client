@@ -1,4 +1,4 @@
-use ravendb_client::DocumentStoreBuilder;
+use ravendb_client::{cluster_topology::ClusterTopologyInfo, DocumentStoreBuilder};
 use tracing::subscriber::set_global_default;
 // use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
@@ -23,7 +23,11 @@ async fn main() -> anyhow::Result<()> {
 
     let session = document_store.open_session().await?;
     match session.get_cluster_topology().await {
-        Ok(topology_string) => println!("{}", topology_string),
+        Ok(topology_string) => {
+            println!("{}", &topology_string);
+            let topo = serde_json::from_str::<ClusterTopologyInfo>(topology_string.as_str())?;
+            println!("{:#?}", topo);
+        }
         Err(e) => {
             tracing::error!("Error happened: {}", &e);
             return Err(e);
