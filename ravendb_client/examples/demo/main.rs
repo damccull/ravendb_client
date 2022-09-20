@@ -24,7 +24,7 @@ async fn main() -> anyhow::Result<()> {
     let session = document_store.open_session().await?;
     match session.get_cluster_topology().await {
         Ok(topology_string) => {
-            println!("{}", &topology_string);
+            tracing::debug!("{}", &topology_string);
             let topo = serde_json::from_str::<ClusterTopologyInfo>(topology_string.as_str())?;
             println!("{:#?}", topo);
         }
