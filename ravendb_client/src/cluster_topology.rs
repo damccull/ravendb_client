@@ -8,7 +8,7 @@ use serde::Deserialize;
 pub struct ClusterTopologyInfo {
     #[serde(rename = "@metadata")]
     pub metadata: HashMap<String, String>, // TODO: Determine if needed or useful and delete if not
-    pub topology: Topology,
+    pub topology: ClusterTopology,
     pub etag: i64,
     pub leader: String,
     pub leader_ship_duration: i64, // TODO: Determine if needed or useful and delete if not
@@ -22,7 +22,7 @@ pub struct ClusterTopologyInfo {
 
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "PascalCase")]
-pub struct Topology {
+pub struct ClusterTopology {
     pub topology_id: String,
     pub all_nodes: HashMap<String, Url>,
     pub members: HashMap<String, Url>,

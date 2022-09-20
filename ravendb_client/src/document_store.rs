@@ -8,7 +8,7 @@ use tracing::instrument;
 use url::Url;
 
 use crate::{
-    cluster_topology::{ClusterTopologyInfo, Topology},
+    cluster_topology::{ClusterTopologyInfo, ClusterTopology},
     error_chain_fmt,
     raven_command::RavenCommand,
     DocumentSession,
@@ -62,7 +62,7 @@ impl DocumentStoreBuilder {
         )?;
 
         let topology_info = ClusterTopologyInfo {
-            topology: Topology {
+            topology: ClusterTopology {
                 all_nodes: initial_node_list,
                 ..Default::default()
             },
