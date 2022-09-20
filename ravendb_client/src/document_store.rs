@@ -217,9 +217,6 @@ impl DocumentStoreActor {
                 raven_command,
                 respond_to,
             } => {
-                //TODO: Convert this to a tokio spawn and send the respond_to to the helper fn instead
-                // of responding here. This will allow the system to spin of a bunch of simultaneous
-                // RavenCommands.
                 let client_identity = self.client_identity.clone();
                 tokio::spawn(async move {
                     let result =
@@ -227,8 +224,6 @@ impl DocumentStoreActor {
                             .await;
                     let _ = respond_to.send(result);
                 });
-                // let result = self.execute_raven_command(raven_command).await;
-                // let _ = respond_to.send(result);
             }
             DocumentStoreMessage::GetServerAddress { respond_to } => {
                 let result = self.get_server_address().await;
