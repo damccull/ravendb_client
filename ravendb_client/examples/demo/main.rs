@@ -8,7 +8,7 @@ use tracing_tree::HierarchicalLayer;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     setup_tracing();
-    let scheme = std::env::var("RAVEN_SCHEME")?;
+    let scheme: String = std::env::var("RAVEN_SCHEME").unwrap_or_else(|_| "http".to_string());
 
     let mut document_store = DocumentStoreBuilder::new();
     if scheme == "https" {
