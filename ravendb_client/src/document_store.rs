@@ -8,7 +8,7 @@ use tracing::instrument;
 use url::Url;
 
 use crate::{
-    cluster_topology::{ClusterTopologyInfo, ClusterTopology},
+    cluster_topology::{ClusterTopology, ClusterTopologyInfo},
     error_chain_fmt,
     raven_command::RavenCommand,
     DocumentSession,

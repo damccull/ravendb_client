@@ -12,7 +12,7 @@ pub struct ClusterTopologyInfo {
     pub etag: i64,
     pub leader: String,
     pub leader_ship_duration: i64, // TODO: Determine if needed or useful and delete if not
-    pub current_state: String, // TODO: Determine if needed or useful and delete if not
+    pub current_state: String,     // TODO: Determine if needed or useful and delete if not
     pub node_tag: String,
     pub current_term: i64, // TODO: Determine if needed or useful and delete if not
     pub node_license_details: HashMap<String, NodeLicenseDetails>, // TODO: Determine if needed or useful and delete if not
@@ -69,7 +69,7 @@ pub struct NodeStatus {
     pub name: Option<String>,
     pub connected: bool,
     pub error_details: Option<String>,
-    pub last_sent: String, //TODO: Make this a DateTime
+    pub last_sent: String,          //TODO: Make this a DateTime
     pub last_reply: Option<String>, //TODO: Make this a DateTime
     pub last_sent_message: String,
     pub last_matching_index: i64,
