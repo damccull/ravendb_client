@@ -8,13 +8,19 @@ use tracing_tree::HierarchicalLayer;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     setup_tracing();
+    let scheme = std::env::var("RAVEN_SCHEME")?;
 
-    let urls = ["https://a.free.damccull.ravendb.cloud"];
-    //let urls = ["http://localhost:8080"];
-    let document_store = DocumentStoreBuilder::new()
-        .set_client_certificate("ravendb-client_dev_cert.pem")
-        .set_urls(&urls)
-        .build()?;
+    let mut document_store = DocumentStoreBuilder::new();
+    if scheme == "https" {
+        document_store = document_store
+            .set_client_certificate("ravendb-client_dev_cert.pem")
+            .set_urls(&["https://a.free.damccull.ravendb.cloud"]);
+    } else {
+        document_store = document_store.set_urls(&["http://localhost:8080"]);
+    }
+
+    let document_store = document_store.build()?;
+
     let session = document_store.open_session().await?;
     match session.get_cluster_topology().await {
         Ok(topology_string) => println!("{}", topology_string),
