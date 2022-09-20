@@ -7,16 +7,16 @@ use serde::Deserialize;
 #[serde(rename_all = "PascalCase")]
 pub struct ClusterTopologyInfo {
     #[serde(rename = "@metadata")]
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, String>, // TODO: Determine if needed or useful and delete if not
     pub topology: Topology,
     pub etag: i64,
     pub leader: String,
-    pub leader_ship_duration: i64,
-    pub current_state: String,
+    pub leader_ship_duration: i64, // TODO: Determine if needed or useful and delete if not
+    pub current_state: String, // TODO: Determine if needed or useful and delete if not
     pub node_tag: String,
-    pub current_term: i64,
-    pub node_license_details: HashMap<String, NodeLicenseDetails>,
-    pub last_state_change_reason: String,
+    pub current_term: i64, // TODO: Determine if needed or useful and delete if not
+    pub node_license_details: HashMap<String, NodeLicenseDetails>, // TODO: Determine if needed or useful and delete if not
+    pub last_state_change_reason: String, // TODO: Determine if needed or useful and delete if not
     pub status: HashMap<String, NodeStatus>,
 }
 
@@ -69,7 +69,8 @@ pub struct NodeStatus {
     pub name: Option<String>,
     pub connected: bool,
     pub error_details: Option<String>,
-    pub last_sent: String,
+    pub last_sent: String, //TODO: Make this a DateTime
+    pub last_reply: Option<String>, //TODO: Make this a DateTime
     pub last_sent_message: String,
     pub last_matching_index: i64,
 }
