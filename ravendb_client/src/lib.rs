@@ -33,6 +33,7 @@ mod document_store;
 pub mod async_multi_database_hi_lo_id_generator;
 pub mod events;
 pub mod raven_command;
+pub mod cluster_topology;
 
 pub use document_session::*;
 pub use document_store::*;

@@ -1,12 +1,18 @@
-use std::{fs::File, io::Read};
+use std::{collections::HashMap, fs::File, io::Read};
 
 use anyhow::Context;
-use rand::seq::SliceRandom;
+use rand::seq::IteratorRandom;
+use reqwest::Identity;
 use tokio::sync::{mpsc, oneshot};
 use tracing::instrument;
 use url::Url;
 
-use crate::{error_chain_fmt, raven_command::RavenCommand, DocumentSession};
+use crate::{
+    cluster_topology::{ClusterTopologyInfo, Topology},
+    error_chain_fmt,
+    raven_command::RavenCommand,
+    DocumentSession,
+};
 
 #[derive(Debug)]
 pub struct DocumentStoreBuilder {
@@ -50,10 +56,18 @@ impl DocumentStoreBuilder {
         assert!(!self.document_store_urls.is_empty());
 
         // Validate URLS
-        let clean_urls = validate_urls(
+        let initial_node_list = validate_urls(
             self.document_store_urls.as_slice(),
             self.client_certificate_path.is_some(),
         )?;
+
+        let topology_info = ClusterTopologyInfo {
+            topology: Topology {
+                all_nodes: initial_node_list,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
 
         let identity = match &self.client_certificate_path {
             Some(certpath) => {
@@ -70,7 +84,7 @@ impl DocumentStoreBuilder {
         let initial_config = DocumentStoreInitialConfiguration {
             //async_document_id_generator: self.async_document_id_generator.clone(),
             database_name: self.database_name.clone(),
-            cluster_urls: clean_urls,
+            cluster_topology: topology_info,
             client_identity: identity,
         };
 
@@ -176,7 +190,7 @@ struct DocumentStoreActor {
     _conventions: Option<Conventions>,
     _database_name: Option<String>,
     _trust_store: Option<CertificatePlaceholder>,
-    urls: Vec<Url>,
+    topology_info: ClusterTopologyInfo,
 }
 impl DocumentStoreActor {
     fn new(
@@ -186,7 +200,7 @@ impl DocumentStoreActor {
         Self {
             receiver,
             //_async_document_id_generator: initial_config.async_document_id_generator,
-            urls: initial_config.cluster_urls,
+            topology_info: initial_config.cluster_topology,
             _conventions: Default::default(),
             _database_name: initial_config.database_name,
             client_identity: initial_config.client_identity,
@@ -206,8 +220,15 @@ impl DocumentStoreActor {
                 //TODO: Convert this to a tokio spawn and send the respond_to to the helper fn instead
                 // of responding here. This will allow the system to spin of a bunch of simultaneous
                 // RavenCommands.
-                let result = self.execute_raven_command(raven_command).await;
-                let _ = respond_to.send(result);
+                let client_identity = self.client_identity.clone();
+                tokio::spawn(async move {
+                    let result =
+                        DocumentStoreActor::execute_raven_command(client_identity, raven_command)
+                            .await;
+                    let _ = respond_to.send(result);
+                });
+                // let result = self.execute_raven_command(raven_command).await;
+                // let _ = respond_to.send(result);
             }
             DocumentStoreMessage::GetServerAddress { respond_to } => {
                 let result = self.get_server_address().await;
@@ -216,14 +237,17 @@ impl DocumentStoreActor {
         }
     }
 
-    #[instrument(name = "DocumentStore Actor - Execute Raven Command", skip(self))]
+    #[instrument(
+        name = "DocumentStore Actor - Execute Raven Command",
+        skip(client_identity)
+    )]
     async fn execute_raven_command(
-        &self,
+        client_identity: Option<Identity>,
         raven_command: RavenCommand,
     ) -> anyhow::Result<reqwest::Response> {
         let mut client = reqwest::Client::builder();
 
-        if let Some(identity) = &self.client_identity {
+        if let Some(identity) = client_identity {
             client = client.identity(identity.clone()).use_rustls_tls();
         }
 
@@ -235,9 +259,12 @@ impl DocumentStoreActor {
 
     #[instrument(name = "DocumentStore Actor - Get Server Address", skip(self))]
     async fn get_server_address(&self) -> anyhow::Result<Url> {
-        self.urls
+        self.topology_info
+            .topology
+            .all_nodes
+            .values()
             .choose(&mut rand::thread_rng())
-            .ok_or_else(|| anyhow::anyhow!("Urls list is empty"))
+            .context("Urls list is empty")
             .cloned()
     }
 }
@@ -281,7 +308,7 @@ pub enum DocumentStoreState {
 pub(crate) struct DocumentStoreInitialConfiguration {
     //async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     database_name: Option<String>,
-    cluster_urls: Vec<Url>,
+    cluster_topology: ClusterTopologyInfo,
     client_identity: Option<reqwest::Identity>,
 }
 
@@ -311,7 +338,7 @@ impl std::fmt::Debug for DocumentStoreError {
 ///
 /// Also ensures all provided URL strings use the same schema: either https or http, but never both within the
 /// list.
-fn validate_urls<T>(urls: &[T], require_https: bool) -> anyhow::Result<Vec<Url>>
+fn validate_urls<T>(urls: &[T], require_https: bool) -> anyhow::Result<HashMap<String, Url>>
 where
     T: AsRef<str>,
 {
@@ -322,24 +349,13 @@ where
 
     let clean_urls = urls
         .iter()
-        .map(|url| -> anyhow::Result<Url> {
-            let url: Url = match Url::parse(url.as_ref()) {
-                Ok(u) => u,
-                Err(e) => {
-                    return Err(anyhow::anyhow!(
-                        "Invalid URL: {}; container error: {}",
-                        url.as_ref(),
-                        e
-                    ));
-                }
-            };
-            Ok(url)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+        .flat_map(|url| -> anyhow::Result<Url> { Ok(Url::parse(url.as_ref())?) })
+        .map(|url| (url.to_string(), url))
+        .collect::<HashMap<_, _>>();
 
     let desired_scheme = if require_https { "https" } else { "http" };
 
-    for url in &clean_urls {
+    for url in clean_urls.values().collect::<Vec<_>>() {
         if url.scheme() != desired_scheme {
             return Err(anyhow::anyhow!("Url does not have correct scheme: {}", url));
         }
@@ -351,6 +367,8 @@ where
 #[cfg(test)]
 mod tests {
     #![allow(non_snake_case)]
+    use std::collections::HashMap;
+
     use url::Url;
 
     use crate::DocumentStoreBuilder;
@@ -358,40 +376,49 @@ mod tests {
     use super::validate_urls;
 
     #[test]
-    fn validate_urls_returns_vec_of_URL_for_http_strings() {
-        let baseline_urls = vec![
-            Url::parse("http://starwars.com").unwrap(),
-            Url::parse("http://google.com").unwrap(),
-        ];
+    fn validate_urls_returns_correct_HashMap_for_http_strings() {
+        // Arrange
+        let mut baseline_urls = HashMap::<String, Url>::new();
+        baseline_urls.insert("A".to_string(), Url::parse("http://starwars.com").unwrap());
+        baseline_urls.insert("B".to_string(), Url::parse("http://google.com").unwrap());
+
         let urls = vec!["http://starwars.com", "http://google.com"];
 
-        assert_eq!(
-            validate_urls(urls.as_slice(), false).unwrap(),
-            baseline_urls
-        );
+        // Act
+        let result = validate_urls(urls.as_slice(), false).unwrap();
+        // Assert
+        assert_eq!(result, baseline_urls);
     }
 
     #[test]
-    fn validate_urls_returns_vec_of_URL_for_https_strings() {
-        let baseline_urls = vec![
-            Url::parse("https://starwars.com").unwrap(),
-            Url::parse("https://google.com").unwrap(),
-        ];
+    fn validate_urls_returns_correct_HashMap_for_https_strings() {
+        // Arrange
+        let mut baseline_urls = HashMap::<String, Url>::new();
+        baseline_urls.insert("A".to_string(), Url::parse("https://starwars.com").unwrap());
+        baseline_urls.insert("B".to_string(), Url::parse("https://google.com").unwrap());
+
         let urls = vec!["https://starwars.com", "https://google.com"];
 
-        assert_eq!(validate_urls(urls.as_slice(), true).unwrap(), baseline_urls);
+        // Act
+        let result = validate_urls(urls.as_slice(), true).unwrap();
+
+        // Assert
+        assert_eq!(result, baseline_urls);
     }
 
     #[test]
     fn validate_urls_fails_for_mixed_http_and_https_strings() {
+        // Arrange
         let urls = vec!["https://starwars.com", "http://google.com"];
 
+        // Assert
         assert!(validate_urls(urls.as_slice(), true).is_err());
         assert!(validate_urls(urls.as_slice(), false).is_err());
     }
 
     #[tokio::test]
     async fn documentstorebuilder_build_succeeds_for_valid_configuration() {
+        // Arrange
         let urls = ["https://localhost:8080"];
 
         let document_store = DocumentStoreBuilder::new()
@@ -399,11 +426,13 @@ mod tests {
             .set_urls(&urls)
             .build();
 
+        // Assert
         assert!(document_store.is_ok());
     }
 
     #[tokio::test]
     async fn documentstorebuilder_build_fails_for_invalid_pem() {
+        // Arrange
         let urls = ["https://localhost:8080"];
 
         let document_store = DocumentStoreBuilder::new()
@@ -412,6 +441,7 @@ mod tests {
             .set_urls(&urls)
             .build();
 
+        // Assert
         assert!(document_store.is_err());
     }
 }
