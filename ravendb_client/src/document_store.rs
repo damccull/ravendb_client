@@ -243,7 +243,7 @@ impl DocumentStoreActor {
         let mut client = reqwest::Client::builder();
 
         if let Some(identity) = client_identity {
-            client = client.identity(identity.clone()).use_rustls_tls();
+            client = client.identity(identity).use_rustls_tls();
         }
 
         let client = client.build()?;
