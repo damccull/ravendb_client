@@ -7,16 +7,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'ravendb-client'",
+            "name": "Debug unit tests in library 'ravendb_client'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=ravendb-client"
+                    "--package=ravendb_client"
                 ],
                 "filter": {
-                    "name": "ravendb-client",
+                    "name": "ravendb_client",
                     "kind": "lib"
                 }
             },
@@ -31,7 +31,7 @@
                 "args": [
                     "build",
                     "--example=demo",
-                    "--package=ravendb-client"
+                    "--package=ravendb_client"
                 ],
                 "filter": {
                     "name": "demo",
@@ -50,7 +50,7 @@
                     "test",
                     "--no-run",
                     "--example=demo",
-                    "--package=ravendb-client"
+                    "--package=ravendb_client"
                 ],
                 "filter": {
                     "name": "demo",
@@ -68,7 +68,7 @@
                 "args": [
                     "build",
                     "--example=sandbox",
-                    "--package=ravendb-client"
+                    "--package=ravendb_client"
                 ],
                 "filter": {
                     "name": "sandbox",
@@ -87,7 +87,7 @@
                     "test",
                     "--no-run",
                     "--example=sandbox",
-                    "--package=ravendb-client"
+                    "--package=ravendb_client"
                 ],
                 "filter": {
                     "name": "sandbox",
@@ -106,7 +106,7 @@
                     "test",
                     "--no-run",
                     "--test=integration",
-                    "--package=ravendb-client"
+                    "--package=ravendb_client"
                 ],
                 "filter": {
                     "name": "integration",
