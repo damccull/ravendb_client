@@ -230,6 +230,7 @@ impl DocumentStoreActor {
                 respond_to,
             } => {
                 let client_identity = self.client_identity.clone();
+                // TODO: Add code to update the topology when needed
                 tokio::spawn(async move {
                     let result =
                         DocumentStoreActor::execute_raven_command(client_identity, raven_command)
