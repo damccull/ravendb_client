@@ -10,8 +10,6 @@ async fn main() -> anyhow::Result<()> {
     setup_tracing();
     let span = tracing::info_span!("Starting");
     span.in_scope(|| async {
-        tracing::info!("Tracing enabled");
-
         tracing::info!("Starting application");
         run().await
     })
