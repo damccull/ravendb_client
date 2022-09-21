@@ -88,7 +88,8 @@ impl DocumentStoreBuilder {
                     })?
                     .read_to_end(&mut buf)
                     .map_err(|e| {
-                        let err = anyhow::anyhow!("File was opened but unable to read. Caused by: {}", e);
+                        let err =
+                            anyhow::anyhow!("File was opened but unable to read. Caused by: {}", e);
                         tracing::error!("{}", err);
                         err
                     })?;
