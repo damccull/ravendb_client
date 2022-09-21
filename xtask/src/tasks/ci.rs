@@ -7,7 +7,7 @@ pub fn ci() -> Result<(), DynError> {
     let tasks = vec![
         ("cargo check on code", vec!["check"]),
         ("cargo check on examples", vec!["check", "--examples"]),
-        ("cargo clippy", vec!["clippy"]),
+        ("cargo clippy", vec!["clippy", "--", "-D", "warnings"]),
         ("cargo build", vec!["build"]),
         ("cargo build on examples", vec!["build", "--examples"]),
         ("cargo test", vec!["test"]),
