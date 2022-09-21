@@ -4,8 +4,9 @@ use anyhow::Context;
 use rand::seq::IteratorRandom;
 use reqwest::Identity;
 use tokio::sync::{mpsc, oneshot};
-use tracing::instrument;
+use tracing::{instrument, Span};
 use url::Url;
+use uuid::Uuid;
 
 use crate::{
     cluster_topology::{ClusterTopology, ClusterTopologyInfo},
@@ -244,9 +245,11 @@ impl DocumentStoreActor {
     #[instrument(
         level = "debug",
         name = "DocumentStore Actor - Handle Message",
-        skip(self)
+        skip(self),fields(correlation_id)
     )]
     async fn handle_message(&mut self, msg: DocumentStoreMessage) {
+        // Apply a correlation id to all child spans of this message handler
+        Span::current().record("correlation_id", Uuid::new_v4().to_string());
         match msg {
             DocumentStoreMessage::ExecuteRavenCommand {
                 raven_command,
@@ -286,6 +289,9 @@ impl DocumentStoreActor {
         let client = client.build()?;
         let response = client.execute(raven_command.get_http_request()?).await?;
 
+        // if let Some(refresh) = response.headers().get("Refresh-Topology"){
+        //     if(refresh)
+        // };
         Ok(response)
     }
 
