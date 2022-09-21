@@ -19,7 +19,7 @@ impl DocumentSession {
         Self { document_store }
     }
 
-    #[instrument(name = "GET_RAVENDB_CLUSTER_TOPOLOGY", skip(self))]
+    #[instrument(level = "info", name = "Get Cluster Topology", skip(self))]
     pub async fn get_cluster_topology(&self) -> anyhow::Result<String> {
         //let server = self.document_store.get_urls();
         let raven_command = RavenCommand {
@@ -33,6 +33,7 @@ impl DocumentSession {
             .await?;
 
         let body = response.text().await?;
+        tracing::info!("Cluster topology downloaded");
         Ok(body)
         // Err(anyhow::anyhow!(
         //     "Error getting the RavenDB version. There is no code to connect, yet!"

@@ -147,7 +147,11 @@ impl DocumentStore {
         Self { sender }
     }
 
-    #[instrument(name = "ACTOR HANDLE - Execute Raven Command", skip(self))]
+    #[instrument(
+        level = "debug",
+        name = "Actor Handle - Execute Raven Command",
+        skip(self)
+    )]
     pub async fn execute_raven_command(
         &self,
         raven_command: RavenCommand,
@@ -168,7 +172,11 @@ impl DocumentStore {
         rx.await?.context("DocumentStoreActor task has been killed")
     }
 
-    #[instrument(name = "ACTOR HANDLE - Get Server Address", skip(self))]
+    #[instrument(
+        level = "debug",
+        name = "Actor Handle - Get Server Address",
+        skip(self)
+    )]
     pub async fn get_server_address(&self) -> anyhow::Result<Url> {
         tracing::debug!("Getting a server address");
         let (tx, rx) = oneshot::channel();
@@ -210,7 +218,11 @@ impl DocumentStoreActor {
         }
     }
 
-    #[instrument(name = "DocumentStore Actor - Handle Message", skip(self))]
+    #[instrument(
+        level = "debug",
+        name = "DocumentStore Actor - Handle Message",
+        skip(self)
+    )]
     async fn handle_message(&mut self, msg: DocumentStoreMessage) {
         //TODO: Move all these handler bodies into functions in their own module or modules and call them
         // to avoid massive bloat in this match statement
@@ -235,6 +247,7 @@ impl DocumentStoreActor {
     }
 
     #[instrument(
+        level = "debug",
         name = "DocumentStore Actor - Execute Raven Command",
         skip(client_identity)
     )]
@@ -254,19 +267,28 @@ impl DocumentStoreActor {
         Ok(response)
     }
 
-    #[instrument(name = "DocumentStore Actor - Get Server Address", skip(self))]
+    #[instrument(
+        level = "debug",
+        name = "DocumentStore Actor - Get Server Address",
+        skip(self)
+    )]
     async fn get_server_address(&self) -> anyhow::Result<Url> {
-        self.topology_info
+        let url = self
+            .topology_info
             .topology
             .all_nodes
             .values()
             .choose(&mut rand::thread_rng())
             .context("Urls list is empty")
-            .cloned()
+            .cloned();
+        if let Ok(u) = &url {
+            tracing::debug!("Selected Url: {}", u);
+        }
+        url
     }
 }
 
-#[instrument(name = "Run Document Store Actor", skip(actor))]
+#[instrument(level = "debug", name = "Running Document Store Actor", skip(actor))]
 async fn run_document_store_actor(mut actor: DocumentStoreActor) {
     while let Some(msg) = actor.receiver.recv().await {
         actor.handle_message(msg).await;

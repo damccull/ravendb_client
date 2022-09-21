@@ -1,5 +1,5 @@
 use ravendb_client::{cluster_topology::ClusterTopologyInfo, DocumentStoreBuilder};
-use tracing::subscriber::set_global_default;
+use tracing::{instrument, subscriber::set_global_default};
 // use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
@@ -8,18 +8,34 @@ use tracing_tree::HierarchicalLayer;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     setup_tracing();
+    let span = tracing::info_span!("Starting");
+    span.in_scope(|| async {
+        tracing::info!("Tracing enabled");
+
+        tracing::info!("Starting application");
+        run().await
+    })
+    .await?;
+    Ok(())
+}
+
+#[instrument(level = "info", name = "Running")]
+async fn run() -> anyhow::Result<()> {
     let scheme: String = std::env::var("RAVEN_SCHEME").unwrap_or_else(|_| "http".to_string());
 
     let mut document_store = DocumentStoreBuilder::new();
     if scheme == "https" {
+        tracing::info!("`RAVEN_SCHEME` set to 'https'. Using pem file.");
         document_store = document_store
             .set_client_certificate("ravendb-client_dev_cert.pem")
             .set_urls(&["https://a.free.damccull.ravendb.cloud"]);
     } else {
+        tracing::warn!("`RAVEN_SCHEME` not set. Connecting insecurly and without authentication.");
         document_store = document_store.set_urls(&["http://localhost:8080"]);
     }
 
     let document_store = document_store.build()?;
+    tracing::info!("DocumentStore created.");
 
     let session = document_store.open_session().await?;
     match session.get_cluster_topology().await {
@@ -38,15 +54,17 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn setup_tracing() {
-    // Redirect all `log`'s events to the subscriber
-    LogTracer::init().expect("Failed to set logger");
     // Set up tracing
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     //let formatting_layer = BunyanFormattingLayer::new("ravendb-rs-demo".into(), std::io::stdout);
+    let heirarchical_layer = HierarchicalLayer::new(2);
     let subscriber = Registry::default()
         .with(env_filter)
         //.with(JsonStorageLayer)
         //.with(formatting_layer)
-        .with(HierarchicalLayer::new(2));
+        .with(heirarchical_layer);
     set_global_default(subscriber).expect("Failed to set subscriber");
+
+    // Redirect all `log`'s events to the subscriber
+    LogTracer::init().expect("Failed to set logger");
 }
