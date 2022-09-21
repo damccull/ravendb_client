@@ -41,8 +41,8 @@ async fn run() -> anyhow::Result<()> {
     match session.get_cluster_topology().await {
         Ok(topology_string) => {
             tracing::debug!("{}", &topology_string);
-            let topo = serde_json::from_str::<ClusterTopologyInfo>(topology_string.as_str())?;
-            println!("{:#?}", topo);
+            let _topo = serde_json::from_str::<ClusterTopologyInfo>(topology_string.as_str())?;
+            //println!("{:#?}", topo);
         }
         Err(e) => {
             tracing::error!("Error happened: {}", &e);
