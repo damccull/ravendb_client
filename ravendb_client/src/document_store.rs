@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::Read};
+use std::{collections::HashMap, fmt::Display, fs::File, io::Read};
 
 use anyhow::Context;
 use rand::seq::IteratorRandom;
@@ -51,9 +51,15 @@ impl DocumentStoreBuilder {
     /// Each call to this will create a new [`DocumentStoreActor`] and return a new handle to it.
     /// It is not recommended to create more that one per database cluster. This function is allowed
     /// to be called more than once to the builder can act as a template after being set up once.
-    pub fn build(&self) -> anyhow::Result<DocumentStore> {
+    #[instrument(level = "debug", name = "Build DocumentStoreBuilder", skip(self))]
+    pub fn build(&self) -> Result<DocumentStore, DocumentStoreError> {
         // Ensure DocumentStore URLs are valid and there is at least one
-        assert!(!self.document_store_urls.is_empty());
+        if self.document_store_urls.is_empty() {
+            tracing::error!(
+                "No URLs were supplied and a document store can't exist without at least one"
+            );
+            return Err(DocumentStoreError::MissingUrlsError);
+        }
 
         // Validate URLS
         let initial_node_list = validate_urls(
@@ -73,8 +79,24 @@ impl DocumentStoreBuilder {
             Some(certpath) => {
                 // Open and validate certificate, and create an identity from it
                 let mut buf = Vec::new();
-                File::open(certpath)?.read_to_end(&mut buf)?;
-                let id = reqwest::Identity::from_pem(&buf)?;
+                File::open(certpath)
+                    .map_err(|e| {
+                        let err =
+                            anyhow::anyhow!("Failed to open certificate file. Caused by: {}", e);
+                        tracing::error!("{}", &err);
+                        err
+                    })?
+                    .read_to_end(&mut buf)
+                    .map_err(|e| {
+                        let err = anyhow::anyhow!("File was opened but unable to read. Caused by: {}", e);
+                        tracing::error!("{}", err);
+                        err
+                    })?;
+                let id = reqwest::Identity::from_pem(&buf).map_err(|e| {
+                    let err = anyhow::anyhow!("Invalid pem file. Caused by: {}", e);
+                    tracing::error!("{}", err);
+                    err
+                })?;
                 Some(id)
             }
             None => None,
@@ -296,9 +318,6 @@ async fn run_document_store_actor(mut actor: DocumentStoreActor) {
 
 #[derive(Debug)]
 enum DocumentStoreMessage {
-    //TODO: Consider having all of these just return the json and let the handle do
-    // the data crunching and deserialization to free up the actor's message queue faster
-    // -- may not be necessary with async but look into it
     /// Executes the provided [`RavenCommand`].
     ExecuteRavenCommand {
         raven_command: RavenCommand,
@@ -343,6 +362,8 @@ pub struct DocumentSubscription;
 
 #[derive(thiserror::Error)]
 pub enum DocumentStoreError {
+    #[error("No URLs were supplied and a document store can't exist without at least one")]
+    MissingUrlsError,
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
 }
@@ -356,7 +377,11 @@ impl std::fmt::Debug for DocumentStoreError {
 ///
 /// Also ensures all provided URL strings use the same schema: either https or http, but never both within the
 /// list.
-fn validate_urls<T>(urls: &[T], require_https: bool) -> anyhow::Result<HashMap<String, Url>>
+#[instrument(level = "debug", name = "Validate URLs")]
+fn validate_urls<T: std::fmt::Debug>(
+    urls: &[T],
+    require_https: bool,
+) -> anyhow::Result<HashMap<String, Url>>
 where
     T: AsRef<str>,
 {
@@ -389,7 +414,7 @@ mod tests {
 
     use url::Url;
 
-    use crate::DocumentStoreBuilder;
+    use crate::{DocumentStoreBuilder, DocumentStoreError};
 
     use super::validate_urls;
 
@@ -473,5 +498,17 @@ mod tests {
 
         // Assert
         assert!(document_store.is_err());
+    }
+
+    #[tokio::test]
+    async fn documentstorebuilder_build_fails_if_no_urls() {
+        let document_store = DocumentStoreBuilder::new()
+            .set_client_certificate("../ravendb-client_dev_cert.pem")
+            .build();
+
+        assert!(
+            document_store.is_err()
+                && matches!(document_store, Err(DocumentStoreError::MissingUrlsError))
+        );
     }
 }
