@@ -2,6 +2,7 @@ use std::{thread, time::Duration};
 
 use ravendb_client::DocumentStoreBuilder;
 use tracing::{instrument, subscriber::set_global_default};
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 // use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Registry};
@@ -83,13 +84,15 @@ async fn run() -> anyhow::Result<()> {
 fn setup_tracing() {
     // Set up tracing
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    //let formatting_layer = BunyanFormattingLayer::new("ravendb-rs-demo".into(), std::io::stdout);
+    let formatting_layer = BunyanFormattingLayer::new("ravendb-rs-demo".into(), std::io::sink);
     //let heirarchical_layer = HierarchicalLayer::new(2);
 
     let tracing_formatter = tracing_subscriber::fmt::layer().pretty();
-    let subscriber = Registry::default().with(env_filter).with(tracing_formatter);
-    //.with(JsonStorageLayer)
-    //.with(formatting_layer)
+    let subscriber = Registry::default()
+        .with(env_filter)
+        .with(tracing_formatter)
+        .with(JsonStorageLayer)
+        .with(formatting_layer);
     //.with(heirarchical_layer);
     set_global_default(subscriber).expect("Failed to set subscriber");
 
