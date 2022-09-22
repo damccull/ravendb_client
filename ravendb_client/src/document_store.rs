@@ -2,7 +2,10 @@ use std::{collections::HashMap, fs::File, io::Read};
 
 use anyhow::Context;
 use rand::seq::IteratorRandom;
-use reqwest::{header::HeaderMap, Identity, Response};
+use reqwest::{
+    header::{HeaderMap, HeaderValue},
+    Identity, Response,
+};
 use tokio::sync::{mpsc, oneshot};
 use tracing::{instrument, Span};
 use url::Url;
@@ -11,6 +14,7 @@ use uuid::Uuid;
 use crate::{
     cluster_topology::{ClusterTopology, ClusterTopologyInfo},
     error_chain_fmt,
+    events::RequestEvents,
     raven_command::{RavenCommand, RavenCommandVariant},
     DocumentSession,
 };
@@ -180,10 +184,10 @@ impl DocumentStore {
         &self,
         raven_command: RavenCommand,
     ) -> Result<reqwest::Response, anyhow::Error> {
-        tracing::debug!("Creating oneshot channel");
+        tracing::trace!("Creating oneshot channel");
         let (tx, rx) = oneshot::channel();
 
-        tracing::debug!("Sending message to actor");
+        tracing::trace!("Sending message to actor");
         let _ = self
             .sender
             .send(DocumentStoreMessage::ExecuteRavenCommand {
@@ -192,7 +196,7 @@ impl DocumentStore {
             })
             .await;
 
-        tracing::debug!("Waiting for oneshot to return");
+        tracing::trace!("Waiting for oneshot to return");
         rx.await?.context("DocumentStoreActor task has been killed")
     }
 
