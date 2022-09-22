@@ -6,7 +6,10 @@ use reqwest::{
     header::{HeaderMap, HeaderValue},
     Identity,
 };
-use tokio::sync::{mpsc, oneshot};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
 use tracing::{instrument, Span};
 use url::Url;
 use uuid::Uuid;
@@ -228,6 +231,7 @@ struct DocumentStoreActor {
     _database_name: Option<String>,
     _trust_store: Option<CertificatePlaceholder>,
     topology_info: ClusterTopologyInfo,
+    topology_updater: Option<JoinHandle<()>>,
 }
 impl DocumentStoreActor {
     fn new(
@@ -238,6 +242,7 @@ impl DocumentStoreActor {
             receiver,
             //_async_document_id_generator: initial_config.async_document_id_generator,
             topology_info: initial_config.cluster_topology,
+            topology_updater: None,
             _conventions: Default::default(),
             _database_name: initial_config.database_name,
             client_identity: initial_config.client_identity,
@@ -245,6 +250,7 @@ impl DocumentStoreActor {
         }
     }
 
+    /// Message handler for the DocumentStoreActor
     #[instrument(
         level = "debug",
         name = "DocumentStore Actor - Handle Message",
@@ -259,6 +265,16 @@ impl DocumentStoreActor {
                 raven_command,
                 respond_to,
             } => {
+                // Define a struct to hold data for the tokio tasks
+                struct RavenCommandTaskData {
+                    identity: Option<Identity>,
+                    node_url: Url,
+                    topology_respond_to:
+                        oneshot::Sender<Result<Option<ClusterTopologyInfo>, DocumentStoreError>>,
+                    topology_etag: i64,
+                    topology_updater_running: bool,
+                }
+
                 // Create a channel to handle topology updates if we need it
                 let (topo_tx, topo_rx) = oneshot::channel();
                 // Can't call this inside the task, but since the topology task might need it, cache a url here
@@ -269,19 +285,21 @@ impl DocumentStoreActor {
                         return;
                     }
                 };
-                struct RavenCommandTaskData {
-                    identity: Option<Identity>,
-                    node_url: Url,
-                    topology_respond_to:
-                        oneshot::Sender<Result<Option<ClusterTopologyInfo>, DocumentStoreError>>,
-                    topology_etag: i64,
-                }
 
+                // Determine if a topology update is already running.
+                // If this is None, then the updater isn't running. If Some, ask if it's finished.
+                let topology_updater_running = match &self.topology_updater {
+                    Some(handle) => !handle.is_finished(),
+                    None => false,
+                };
+
+                // Define the task data
                 let taskdata = RavenCommandTaskData {
                     identity: self.client_identity.clone(),
                     node_url,
                     topology_respond_to: topo_tx,
                     topology_etag: self.topology_info.etag,
+                    topology_updater_running,
                 };
 
                 // Spawn a task to do the request
@@ -296,17 +314,20 @@ impl DocumentStoreActor {
                     // Spin off a task to update the topology if needed
                     match &result {
                         Ok(response) => {
-                            let headers = response.headers().clone();
-                            tokio::spawn(async move {
-                                DocumentStoreActor::refresh_topology_task(
-                                    taskdata.identity.clone(),
-                                    taskdata.node_url,
-                                    headers,
-                                    taskdata.topology_respond_to,
-                                    taskdata.topology_etag,
-                                )
-                                .await
-                            });
+                            // Only spawn the update task if one isn't already running
+                            if !taskdata.topology_updater_running {
+                                let headers = response.headers().clone();
+                                tokio::spawn(async move {
+                                    DocumentStoreActor::refresh_topology_task(
+                                        taskdata.identity.clone(),
+                                        taskdata.node_url,
+                                        headers,
+                                        taskdata.topology_respond_to,
+                                        taskdata.topology_etag,
+                                    )
+                                    .await
+                                });
+                            }
                         }
                         Err(_) => {}
                     };
@@ -342,6 +363,7 @@ impl DocumentStoreActor {
         }
     }
 
+    /// Checks to see if the server is indicating a need for refreshing the topology and refreshes it if so.
     #[instrument(level = "debug", skip(client_identity, respond_to))]
     async fn refresh_topology_task(
         client_identity: Option<Identity>,
@@ -350,48 +372,53 @@ impl DocumentStoreActor {
         respond_to: oneshot::Sender<Result<Option<ClusterTopologyInfo>, DocumentStoreError>>,
         topology_etag: i64,
     ) {
+        tracing::trace!("Attempting topology update");
+        tracing::trace!("Request headers are: {:#?}", &headers);
         // Check if the Refresh-Topology response header exists and is false, or doesn't exist
         // and return early
-        if let Some(refresh) = headers.get("Refresh-Topology") {
-            if refresh.to_str().unwrap_or("false") == "false" {
-                // Return early.
-                let _ = respond_to.send(Ok(None));
+        if let Some(refresh) = headers.get("Refresh-Topology".to_lowercase()) {
+            if refresh.to_str().unwrap_or("false") == "true" {
+                tracing::trace!("Found key `{:?}`", refresh);
+                let get_topology = RavenCommand {
+                    base_server_url: url,
+                    command: RavenCommandVariant::GetClusterTopology,
+                };
+                let result = match DocumentStoreActor::send_raven_command_request_to_server(
+                    client_identity,
+                    get_topology,
+                    topology_etag,
+                )
+                .await
+                {
+                    Ok(response) => response,
+                    Err(e) => {
+                        // Return early
+                        let _ = respond_to.send(Err(DocumentStoreError::UnexpectedError(e)));
+                        return;
+                    }
+                };
+
+                let result = match result.json::<ClusterTopologyInfo>().await {
+                    Ok(topo) => topo,
+                    Err(e) => {
+                        // Return early
+                        let _ = respond_to.send(Err(DocumentStoreError::UnexpectedError(
+                            anyhow::anyhow!(
+                                "Unable to deserialize cluster topology information. Caused by: {}",
+                                e
+                            ),
+                        )));
+                        return;
+                    }
+                };
+
+                let _ = respond_to.send(Ok(Some(result)));
                 return;
             }
-        };
-
-        let get_topology = RavenCommand {
-            base_server_url: url,
-            command: RavenCommandVariant::GetClusterTopology,
-        };
-        let result = match DocumentStoreActor::send_raven_command_request_to_server(
-            client_identity,
-            get_topology,
-            topology_etag,
-        )
-        .await
-        {
-            Ok(response) => response,
-            Err(e) => {
-                // Return early
-                let _ = respond_to.send(Err(DocumentStoreError::UnexpectedError(e)));
-                return;
-            }
-        };
-
-        let result = match result.json::<ClusterTopologyInfo>().await {
-            Ok(topo) => topo,
-            Err(e) => {
-                // Return early
-                let _ = respond_to.send(Err(DocumentStoreError::UnexpectedError(anyhow::anyhow!(
-                    "Unable to deserialize cluster topology information. Caused by: {}",
-                    e
-                ))));
-                return;
-            }
-        };
-
-        let _ = respond_to.send(Ok(Some(result)));
+        }
+        // No update needed
+        tracing::trace!("Refresh-Topology header not present or 'false'. Not performing update.");
+        let _ = respond_to.send(Ok(None));
     }
 
     #[instrument(level = "debug", skip(client_identity))]
@@ -400,8 +427,8 @@ impl DocumentStoreActor {
         raven_command: RavenCommand,
         topology_etag: i64,
     ) -> anyhow::Result<reqwest::Response> {
-        let mut client = reqwest::Client::builder();
-        //.proxy(reqwest::Proxy::http("http://localhost:5555")?);
+        let mut client =
+            reqwest::Client::builder().proxy(reqwest::Proxy::http("http://localhost:5555")?);
 
         if let Some(identity) = client_identity.clone() {
             client = client.identity(identity).use_rustls_tls();
