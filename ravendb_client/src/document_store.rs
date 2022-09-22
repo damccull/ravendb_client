@@ -42,6 +42,7 @@ impl DocumentStoreBuilder {
     }
 
     pub fn set_dns_overrides(mut self, overrides: DnsOverrides) -> Self {
+        tracing::trace!("Adding to dns_overrides: {:?}", &overrides);
         self.dns_overrides = Some(overrides);
         self
     }
@@ -131,6 +132,8 @@ impl DocumentStoreBuilder {
             database_name: self.database_name.clone(),
             dns_overrides: self.dns_overrides.clone(),
         };
+
+        tracing::trace!("Initial Configuration: {:?}", &initial_config);
 
         Ok(DocumentStore::new(initial_config))
     }
@@ -537,6 +540,7 @@ pub enum DocumentStoreState {
 }
 
 /// Requests to initialize.
+#[derive(Debug)]
 pub(crate) struct DocumentStoreInitialConfiguration {
     //async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     client_identity: Option<reqwest::Identity>,
