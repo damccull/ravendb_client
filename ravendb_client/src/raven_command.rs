@@ -27,11 +27,38 @@ impl RavenCommand {
         // by default. In each command, replace the url by joining the endpoint path to
         // the server base url. Also replace the method with the right one for the command.
         let base_request = reqwest::Client::new().request(Method::GET, "http://placeholder");
+
+        tracing::debug!("{:?}", base_request);
         // Handle specific command options
-        let request = match self.command {
+        let request = match &self.command {
             RavenCommandVariant::GetClusterTopology => {
                 let mut request = base_request.build()?;
                 *request.url_mut() = self.base_server_url.join("cluster/topology")?;
+                request
+            }
+            RavenCommandVariant::GetAllDocumentsFromDatabase {
+                database,
+                page_size,
+                start,
+            } => {
+                let mut request = base_request.build()?;
+                *request.url_mut() = self
+                    .base_server_url
+                    .join("databases/")?
+                    .join(format!("{}/", database).as_str())?
+                    .join("docs")?;
+
+                let mut query_string_parts = Vec::new();
+                if let Some(page_size) = page_size {
+                    query_string_parts.push(format!("pageSize={}", page_size))
+                }
+                if let Some(start) = start {
+                    query_string_parts.push(format!("start={}", start))
+                }
+                let query_string = query_string_parts.join("&");
+
+                request.url_mut().set_query(Some(&query_string));
+
                 request
             }
         };
@@ -46,4 +73,9 @@ impl RavenCommand {
 #[derive(Debug)]
 pub enum RavenCommandVariant {
     GetClusterTopology,
+    GetAllDocumentsFromDatabase {
+        database: String,
+        page_size: Option<i64>,
+        start: Option<i64>,
+    },
 }
