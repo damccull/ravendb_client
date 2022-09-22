@@ -4,7 +4,7 @@ use anyhow::Context;
 use rand::seq::IteratorRandom;
 use reqwest::{
     header::{HeaderMap, HeaderValue},
-    Identity, Response,
+    Identity,
 };
 use tokio::sync::{mpsc, oneshot};
 use tracing::{instrument, Span};
@@ -14,7 +14,6 @@ use uuid::Uuid;
 use crate::{
     cluster_topology::{ClusterTopology, ClusterTopologyInfo},
     error_chain_fmt,
-    events::RequestEvents,
     raven_command::{RavenCommand, RavenCommandVariant},
     DocumentSession,
 };
