@@ -10,7 +10,12 @@ pub fn ci() -> Result<(), DynError> {
         ("cargo clippy", vec!["clippy", "--", "-D", "warnings"]),
         ("cargo build", vec!["build"]),
         ("cargo build on examples", vec!["build", "--examples"]),
-        ("cargo test", vec!["test"]),
+        ("cargo nextest", vec!["nextest", "run"]),
+        ("cargo test", vec!["test", "--doc"]),
+        // (
+        //     "cargo nextest on examples",
+        //     vec!["nextest", "run", "--examples"],
+        // ),
         ("cargo test on examples", vec!["test", "--examples"]),
         ("cargo audit", vec!["audit"]),
         ("cargo fmt", vec!["fmt"]),
