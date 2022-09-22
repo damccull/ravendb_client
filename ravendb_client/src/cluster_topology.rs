@@ -28,18 +28,18 @@ pub struct ClusterTopology {
     pub members: HashMap<String, Url>,
     pub promotables: HashMap<String, Url>,
     pub watchers: HashMap<String, Url>,
-    pub last_node_id: String,
+    pub last_node_id: Option<String>,
     pub etag: i64,
 }
 
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "PascalCase")]
 pub struct NodeLicenseDetails {
-    pub utilized_cores: i64,
+    pub utilized_cores: Option<i64>,
     pub max_utilized_cores: Option<i64>,
-    pub number_of_cores: i32,
-    pub installed_memory_in_gb: f64,
-    pub usable_memory_in_gb: f64,
+    pub number_of_cores: Option<i32>,
+    pub installed_memory_in_gb: Option<f64>,
+    pub usable_memory_in_gb: Option<f64>,
     pub build_info: BuildInfo,
     pub os_info: OsInfo,
 }
@@ -47,19 +47,19 @@ pub struct NodeLicenseDetails {
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "PascalCase")]
 pub struct BuildInfo {
-    pub product_version: String,
-    pub build_version: i64,
-    pub commit_hash: String,
-    pub full_version: String,
+    pub product_version: Option<String>,
+    pub build_version: Option<i64>,
+    pub commit_hash: Option<String>,
+    pub full_version: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "PascalCase")]
 pub struct OsInfo {
-    pub r#type: String,
-    pub full_name: String,
-    pub version: String,
-    pub build_version: String,
+    pub r#type: Option<String>,
+    pub full_name: Option<String>,
+    pub version: Option<String>,
+    pub build_version: Option<String>,
     pub is_64_bit: bool,
 }
 
@@ -69,10 +69,10 @@ pub struct NodeStatus {
     pub name: Option<String>,
     pub connected: bool,
     pub error_details: Option<String>,
-    pub last_sent: String,          //TODO: Make this a DateTime
+    pub last_sent: Option<String>,  //TODO: Make this a DateTime
     pub last_reply: Option<String>, //TODO: Make this a DateTime
     pub last_sent_message: Option<String>,
-    pub last_matching_index: i64,
+    pub last_matching_index: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, Default)]
