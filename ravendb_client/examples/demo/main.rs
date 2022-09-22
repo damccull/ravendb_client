@@ -1,4 +1,9 @@
-use std::{thread, time::Duration};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
+    thread,
+    time::Duration,
+};
 
 use ravendb_client::DocumentStoreBuilder;
 use tracing::{instrument, subscriber::set_global_default};
@@ -25,12 +30,18 @@ async fn main() -> anyhow::Result<()> {
 async fn run() -> anyhow::Result<()> {
     let scheme: String = std::env::var("RAVEN_SCHEME").unwrap_or_else(|_| "http".to_string());
 
+    let mut dns_overrides = HashMap::<String, IpAddr>::new();
+    dns_overrides.insert("raven1".to_string(), "127.0.0.1".parse()?);
+    dns_overrides.insert("raven2".to_string(), "127.0.0.1".parse()?);
+    dns_overrides.insert("raven3".to_string(), "127.0.0.1".parse()?);
+
     let mut document_store = DocumentStoreBuilder::new();
     if scheme == "https" {
         tracing::info!("`RAVEN_SCHEME` set to 'https'. Using pem file.");
         document_store = document_store
             .set_client_certificate("ravendb-client_dev_cert.pem")
-            .set_urls(&["https://a.free.damccull.ravendb.cloud"]);
+            .set_urls(&["https://a.free.damccull.ravendb.cloud"])
+            .set_dns_overrides(dns_overrides);
     } else {
         tracing::warn!("`RAVEN_SCHEME` not set or set to 'http'. Connecting insecurly and without authentication.");
         document_store = document_store.set_urls(&["http://localhost:8081"]);
@@ -40,15 +51,6 @@ async fn run() -> anyhow::Result<()> {
     tracing::info!("DocumentStore created.");
 
     let session = document_store.open_session().await?;
-    // match session.get_cluster_topology().await {
-    //     Ok(topology) => {
-    //         tracing::trace!("{:?}", &topology);
-    //     }
-    //     Err(e) => {
-    //         tracing::error!("Error happened: {}", &e);
-    //         return Err(e);
-    //     }
-    // };
 
     match session
         .get_all_documents_for_database("sample", Some(1), None)

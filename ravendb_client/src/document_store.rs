@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fs::File, io::Read};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::Read,
+    net::{IpAddr, SocketAddr},
+};
 
 use anyhow::Context;
 use rand::seq::IteratorRandom;
@@ -21,16 +26,29 @@ use crate::{
     DocumentSession,
 };
 
+pub type DnsOverrides = HashMap<String, IpAddr>;
+
 #[derive(Debug)]
 pub struct DocumentStoreBuilder {
-    database_name: Option<String>,
-    document_store_urls: Vec<String>,
     client_certificate_path: Option<String>,
+    database_name: Option<String>,
+    dns_overrides: Option<DnsOverrides>,
+    document_store_urls: Vec<String>,
 }
 
 impl DocumentStoreBuilder {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn set_dns_overrides(mut self, overrides: DnsOverrides) -> Self {
+        self.dns_overrides = Some(overrides);
+        self
+    }
+
+    pub fn set_client_certificate(mut self, certificate_path: &str) -> Self {
+        self.client_certificate_path = Some(certificate_path.to_string());
+        self
     }
 
     pub fn set_urls<T>(mut self, urls: &[T]) -> Self
@@ -40,11 +58,6 @@ impl DocumentStoreBuilder {
         for u in urls {
             self.document_store_urls.push(u.as_ref().to_string());
         }
-        self
-    }
-
-    pub fn set_client_certificate(mut self, certificate_path: &str) -> Self {
-        self.client_certificate_path = Some(certificate_path.to_string());
         self
     }
 
@@ -113,9 +126,10 @@ impl DocumentStoreBuilder {
         // Create an initial configuration for the DocumentStoreActor
         let initial_config = DocumentStoreInitialConfiguration {
             //async_document_id_generator: self.async_document_id_generator.clone(),
-            database_name: self.database_name.clone(),
-            cluster_topology: topology_info,
             client_identity: identity,
+            cluster_topology: topology_info,
+            database_name: self.database_name.clone(),
+            dns_overrides: self.dns_overrides.clone(),
         };
 
         Ok(DocumentStore::new(initial_config))
@@ -129,9 +143,10 @@ impl Default for DocumentStoreBuilder {
 
         Self {
             //async_document_id_generator: Box::new(AsyncMultiDatabaseHiLoIdGenerator::default()),
-            database_name: None,
-            document_store_urls: Vec::new(),
             client_certificate_path: None,
+            database_name: None,
+            dns_overrides: None,
+            document_store_urls: Vec::new(),
         }
     }
 }
@@ -227,6 +242,7 @@ struct DocumentStoreActor {
     receiver: mpsc::Receiver<DocumentStoreMessage>,
     //_async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     client_identity: Option<reqwest::Identity>,
+    dns_overrides: Option<DnsOverrides>,
     _conventions: Option<Conventions>,
     _database_name: Option<String>,
     _trust_store: Option<CertificatePlaceholder>,
@@ -239,14 +255,15 @@ impl DocumentStoreActor {
         initial_config: DocumentStoreInitialConfiguration,
     ) -> Self {
         Self {
-            receiver,
             //_async_document_id_generator: initial_config.async_document_id_generator,
+            _conventions: Default::default(),
+            client_identity: initial_config.client_identity,
+            _database_name: initial_config.database_name,
+            dns_overrides: initial_config.dns_overrides,
+            receiver,
+            _trust_store: Some(CertificatePlaceholder),
             topology_info: initial_config.cluster_topology,
             topology_updater: None,
-            _conventions: Default::default(),
-            _database_name: initial_config.database_name,
-            client_identity: initial_config.client_identity,
-            _trust_store: Some(CertificatePlaceholder),
         }
     }
 
@@ -267,6 +284,7 @@ impl DocumentStoreActor {
             } => {
                 // Define a struct to hold data for the tokio tasks
                 struct RavenCommandTaskData {
+                    dns_overrides: Option<DnsOverrides>,
                     identity: Option<Identity>,
                     node_url: Url,
                     topology_respond_to:
@@ -295,6 +313,7 @@ impl DocumentStoreActor {
 
                 // Define the task data
                 let taskdata = RavenCommandTaskData {
+                    dns_overrides: self.dns_overrides.clone(),
                     identity: self.client_identity.clone(),
                     node_url,
                     topology_respond_to: topo_tx,
@@ -306,6 +325,7 @@ impl DocumentStoreActor {
                 tokio::spawn(async move {
                     let result = DocumentStoreActor::send_raven_command_request_to_server(
                         taskdata.identity.clone(),
+                        taskdata.dns_overrides.clone(),
                         raven_command,
                         taskdata.topology_etag,
                     )
@@ -319,7 +339,8 @@ impl DocumentStoreActor {
                                 let headers = response.headers().clone();
                                 tokio::spawn(async move {
                                     DocumentStoreActor::refresh_topology_task(
-                                        taskdata.identity.clone(),
+                                        taskdata.identity,
+                                        taskdata.dns_overrides,
                                         taskdata.node_url,
                                         headers,
                                         taskdata.topology_respond_to,
@@ -367,6 +388,7 @@ impl DocumentStoreActor {
     #[instrument(level = "debug", skip(client_identity, respond_to))]
     async fn refresh_topology_task(
         client_identity: Option<Identity>,
+        dns_overrides: Option<DnsOverrides>,
         url: Url,
         headers: HeaderMap,
         respond_to: oneshot::Sender<Result<Option<ClusterTopologyInfo>, DocumentStoreError>>,
@@ -385,6 +407,7 @@ impl DocumentStoreActor {
                 };
                 let result = match DocumentStoreActor::send_raven_command_request_to_server(
                     client_identity,
+                    dns_overrides,
                     get_topology,
                     topology_etag,
                 )
@@ -424,14 +447,28 @@ impl DocumentStoreActor {
     #[instrument(level = "debug", skip(client_identity))]
     async fn send_raven_command_request_to_server(
         client_identity: Option<Identity>,
+        dns_overrides: Option<DnsOverrides>,
         raven_command: RavenCommand,
         topology_etag: i64,
     ) -> anyhow::Result<reqwest::Response> {
-        let mut client =
-            reqwest::Client::builder();//.proxy(reqwest::Proxy::http("http://localhost:5555")?);
+        let mut client = reqwest::Client::builder(); //.proxy(reqwest::Proxy::http("http://localhost:5555")?);
 
         if let Some(identity) = client_identity.clone() {
             client = client.identity(identity).use_rustls_tls();
+        }
+
+        // Convert Option<HashMap<String, IpAddr>> into HashMap<String,SocketAddr>
+        let overrides = dns_overrides
+            .map(|overrides| {
+                overrides
+                    .into_iter()
+                    .map(|(k, v)| (k, SocketAddr::new(v, 0)))
+                    .collect::<HashMap<String, SocketAddr>>()
+            })
+            .unwrap_or_default();
+
+        for (domain, address) in overrides {
+            client = client.resolve(domain.as_str(), address);
         }
 
         let client = client.build()?;
@@ -500,9 +537,10 @@ pub enum DocumentStoreState {
 /// Requests to initialize.
 pub(crate) struct DocumentStoreInitialConfiguration {
     //async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
-    database_name: Option<String>,
-    cluster_topology: ClusterTopologyInfo,
     client_identity: Option<reqwest::Identity>,
+    cluster_topology: ClusterTopologyInfo,
+    database_name: Option<String>,
+    dns_overrides: Option<DnsOverrides>,
 }
 
 // Placeholders below
