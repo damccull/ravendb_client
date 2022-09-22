@@ -1,9 +1,10 @@
-use ravendb_client::{cluster_topology::ClusterTopologyInfo, DocumentStoreBuilder};
+use std::{thread, time::Duration};
+
+use ravendb_client::DocumentStoreBuilder;
 use tracing::{instrument, subscriber::set_global_default};
 // use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
-use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, EnvFilter, Registry};
-use tracing_tree::HierarchicalLayer;
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Registry};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -14,6 +15,8 @@ async fn main() -> anyhow::Result<()> {
         run().await
     })
     .await?;
+
+    thread::sleep(Duration::from_secs(2));
     Ok(())
 }
 
@@ -28,7 +31,7 @@ async fn run() -> anyhow::Result<()> {
             .set_client_certificate("ravendb-client_dev_cert.pem")
             .set_urls(&["https://a.free.damccull.ravendb.cloud"]);
     } else {
-        tracing::warn!("`RAVEN_SCHEME` not set. Connecting insecurly and without authentication.");
+        tracing::warn!("`RAVEN_SCHEME` not set or set to 'http'. Connecting insecurly and without authentication.");
         document_store = document_store.set_urls(&["http://localhost:8080"]);
     }
 
@@ -36,10 +39,37 @@ async fn run() -> anyhow::Result<()> {
     tracing::info!("DocumentStore created.");
 
     let session = document_store.open_session().await?;
-    match session.get_cluster_topology().await {
-        Ok(topology_string) => {
-            tracing::trace!("{}", &topology_string);
-            let _topo = serde_json::from_str::<ClusterTopologyInfo>(topology_string.as_str())?;
+    // match session.get_cluster_topology().await {
+    //     Ok(topology) => {
+    //         tracing::trace!("{:?}", &topology);
+    //     }
+    //     Err(e) => {
+    //         tracing::error!("Error happened: {}", &e);
+    //         return Err(e);
+    //     }
+    // };
+
+    match session
+        .get_all_documents_for_database("sample", Some(1), None)
+        .await
+    {
+        Ok(topology) => {
+            tracing::trace!("{:?}", &topology);
+        }
+        Err(e) => {
+            tracing::error!("Error happened: {}", &e);
+            return Err(e);
+        }
+    };
+
+    thread::sleep(Duration::from_secs(2));
+
+    match session
+        .get_all_documents_for_database("sample", Some(1), None)
+        .await
+    {
+        Ok(topology) => {
+            tracing::trace!("{:?}", &topology);
         }
         Err(e) => {
             tracing::error!("Error happened: {}", &e);
@@ -56,8 +86,7 @@ fn setup_tracing() {
     //let formatting_layer = BunyanFormattingLayer::new("ravendb-rs-demo".into(), std::io::stdout);
     //let heirarchical_layer = HierarchicalLayer::new(2);
 
-    let tracing_formatter = tracing_subscriber::fmt::layer()
-        .pretty();
+    let tracing_formatter = tracing_subscriber::fmt::layer().pretty();
     let subscriber = Registry::default().with(env_filter).with(tracing_formatter);
     //.with(JsonStorageLayer)
     //.with(formatting_layer)
