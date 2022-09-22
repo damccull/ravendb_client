@@ -33,7 +33,7 @@ async fn run() -> anyhow::Result<()> {
             .set_urls(&["https://a.free.damccull.ravendb.cloud"]);
     } else {
         tracing::warn!("`RAVEN_SCHEME` not set or set to 'http'. Connecting insecurly and without authentication.");
-        document_store = document_store.set_urls(&["http://localhost:8080"]);
+        document_store = document_store.set_urls(&["http://localhost:8081"]);
     }
 
     let document_store = document_store.build()?;
