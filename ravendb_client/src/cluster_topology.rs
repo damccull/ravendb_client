@@ -12,7 +12,7 @@ pub struct ClusterTopologyInfo {
     pub etag: i64,
     pub leader: String,
     pub leader_ship_duration: Option<i64>, // TODO: Determine if needed or useful and delete if not
-    pub current_state: String,     // TODO: Determine if needed or useful and delete if not
+    pub current_state: String,             // TODO: Determine if needed or useful and delete if not
     pub node_tag: String,
     pub current_term: i64, // TODO: Determine if needed or useful and delete if not
     pub node_license_details: HashMap<String, NodeLicenseDetails>, // TODO: Determine if needed or useful and delete if not
