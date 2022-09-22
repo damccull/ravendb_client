@@ -459,13 +459,15 @@ impl DocumentStoreActor {
 
         // Convert Option<HashMap<String, IpAddr>> into HashMap<String,SocketAddr>
         let overrides = dns_overrides
-            .map(|overrides| {
-                overrides
-                    .into_iter()
-                    .map(|(k, v)| (k, SocketAddr::new(v, 0)))
-                    .collect::<HashMap<String, SocketAddr>>()
-            })
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(k, v)| (k, SocketAddr::new(v, 0)))
+            .collect::<HashMap<String, SocketAddr>>();
+
+        tracing::trace!(
+            "Adding these to dns overrides for this request: {:?}",
+            &overrides
+        );
 
         for (domain, address) in overrides {
             client = client.resolve(domain.as_str(), address);

@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
-    thread,
-    time::Duration,
-};
+use std::{collections::HashMap, net::IpAddr, thread, time::Duration};
 
 use ravendb_client::DocumentStoreBuilder;
 use tracing::{instrument, subscriber::set_global_default};
@@ -44,7 +39,9 @@ async fn run() -> anyhow::Result<()> {
             .set_dns_overrides(dns_overrides);
     } else {
         tracing::warn!("`RAVEN_SCHEME` not set or set to 'http'. Connecting insecurly and without authentication.");
-        document_store = document_store.set_urls(&["http://localhost:8081"]);
+        document_store = document_store
+            .set_urls(&["http://raven1:8080"])
+            .set_dns_overrides(dns_overrides);
     }
 
     let document_store = document_store.build()?;
