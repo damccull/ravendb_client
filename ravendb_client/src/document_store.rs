@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs::File, io::Read};
 
 use anyhow::Context;
 use rand::seq::IteratorRandom;
-use reqwest::Identity;
+use reqwest::{header::HeaderMap, Identity, Response};
 use tokio::sync::{mpsc, oneshot};
 use tracing::{instrument, Span};
 use url::Url;
@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     cluster_topology::{ClusterTopology, ClusterTopologyInfo},
     error_chain_fmt,
-    raven_command::RavenCommand,
+    raven_command::{RavenCommand, RavenCommandVariant},
     DocumentSession,
 };
 
@@ -245,7 +245,8 @@ impl DocumentStoreActor {
     #[instrument(
         level = "debug",
         name = "DocumentStore Actor - Handle Message",
-        skip(self),fields(correlation_id)
+        skip(self),
+        fields(correlation_id)
     )]
     async fn handle_message(&mut self, msg: DocumentStoreMessage) {
         // Apply a correlation id to all child spans of this message handler
@@ -257,18 +258,79 @@ impl DocumentStoreActor {
             } => {
                 let client_identity = self.client_identity.clone();
                 // TODO: Add code to update the topology when needed
+                // Create a channel to handle topology updates if we need it.
+                let (topo_tx, topo_rx) = oneshot::channel();
+            
                 tokio::spawn(async move {
                     let result =
                         DocumentStoreActor::execute_raven_command(client_identity, raven_command)
                             .await;
+
+                    // Spin off a task to update the topology if needed
+                    match &result {
+                        Ok(response) => {
+                            let headers = response.headers().clone();
+                            let node_url = match self.get_server_address() {
+                                Ok(url) => url,
+                                Err(e) => {
+                                    tracing::error!(
+                                        "Unable to get url for topology update. Caused by: {}",
+                                        e
+                                    );
+                                    return;
+                                }
+                            };
+                            tokio::spawn(async move {
+                                DocumentStoreActor::refresh_topology_task(
+                                    node_url, headers, topo_tx,
+                                )
+                            });
+                        }
+                        Err(_) => {}
+                    };
+
+                    // Send the result back to the caller
                     let _ = respond_to.send(result);
+
+                    
                 });
+                // Await the topology update here
+                match topo_rx.await {
+                    Ok(msg) => match msg {
+                        Ok(topology) => {
+                            self.topology_info = topology;
+                            tracing::info!("Topology updated successfully.");
+                        }
+                        Err(err) => {
+                            tracing::error!("Unable to update topology. Caused by: {}", err);
+                        }
+                    },
+                    Err(e) => {
+                        tracing::error!("Unable to update topology. Caused by: {}", e);
+                    }
+                }
             }
             DocumentStoreMessage::GetServerAddress { respond_to } => {
-                let result = self.get_server_address().await;
+                let result = self.get_server_address();
                 let _ = respond_to.send(result);
             }
         }
+    }
+
+    async fn refresh_topology_task(
+        url: Url,
+        headers: HeaderMap,
+        respond_to: oneshot::Sender<Result<ClusterTopologyInfo, DocumentStoreError>>,
+    ) {
+        if let Some(refresh) = headers.get("Refresh-Topology") {
+            if refresh.to_str().unwrap_or("false") == "true" {}
+        };
+
+        let get_topology = RavenCommand {
+            base_server_url: node_url,
+            command: RavenCommandVariant::GetClusterTopology,
+        };
+        DocumentStoreActor::execute_raven_command(client_identity, get_topology).await;
     }
 
     #[instrument(
@@ -282,16 +344,13 @@ impl DocumentStoreActor {
     ) -> anyhow::Result<reqwest::Response> {
         let mut client = reqwest::Client::builder();
 
-        if let Some(identity) = client_identity {
+        if let Some(identity) = client_identity.clone() {
             client = client.identity(identity).use_rustls_tls();
         }
 
         let client = client.build()?;
         let response = client.execute(raven_command.get_http_request()?).await?;
 
-        // if let Some(refresh) = response.headers().get("Refresh-Topology"){
-        //     if(refresh)
-        // };
         Ok(response)
     }
 
@@ -300,7 +359,7 @@ impl DocumentStoreActor {
         name = "DocumentStore Actor - Get Server Address",
         skip(self)
     )]
-    async fn get_server_address(&self) -> anyhow::Result<Url> {
+    fn get_server_address(&self) -> anyhow::Result<Url> {
         let url = self
             .topology_info
             .topology
