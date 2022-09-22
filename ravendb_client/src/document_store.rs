@@ -400,8 +400,8 @@ impl DocumentStoreActor {
         raven_command: RavenCommand,
         topology_etag: i64,
     ) -> anyhow::Result<reqwest::Response> {
-        let mut client =
-            reqwest::Client::builder().proxy(reqwest::Proxy::http("http://localhost:5555")?);
+        let mut client = reqwest::Client::builder();
+        //.proxy(reqwest::Proxy::http("http://localhost:5555")?);
 
         if let Some(identity) = client_identity.clone() {
             client = client.identity(identity).use_rustls_tls();
