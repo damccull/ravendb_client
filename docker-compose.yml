@@ -1,0 +1,44 @@
+version: '3.9'
+services:
+  raven1:
+    image: ravendb/ravendb:5.4-ubuntu-latest
+    container_name: raven1
+    ports:
+      - 8081:8080
+      - 38881:38888
+    environment:
+      - RAVEN_ARGS=--Setup.Mode=None
+      - RAVEN_Logs_Mode=Information
+      - RAVEN_Security_UnsecuredAccessAllowed=PublicNetwork
+      - RAVEN_PublicServerUrl=http://raven1:8080
+      - RAVEN_PublicServerUrl_Tcp=tcp://raven1:38888
+      - RAVEN_License_Eula_Accepted=true
+    env_file: ./license.env
+      
+  raven2:
+    image: ravendb/ravendb:5.4-ubuntu-latest
+    container_name: raven2
+    ports:
+      - 8082:8080
+      - 38882:38888
+    environment:
+      - RAVEN_ARGS=--Setup.Mode=None
+      - RAVEN_Security_UnsecuredAccessAllowed=PublicNetwork
+      - RAVEN_PublicServerUrl=http://raven2:8080
+      - RAVEN_PublicServerUrl_Tcp=tcp://raven2:38888
+      - RAVEN_License_Eula_Accepted=true
+    env_file: ./license.env
+   
+  raven3:
+    image: ravendb/ravendb:5.4-ubuntu-latest
+    container_name: raven3
+    ports:
+      - 8083:8080
+      - 38883:38888 
+    environment:
+      - RAVEN_ARGS=--Setup.Mode=None
+      - RAVEN_Security_UnsecuredAccessAllowed=PublicNetwork
+      - RAVEN_PublicServerUrl=http://raven3:8080
+      - RAVEN_PublicServerUrl_Tcp=tcp://raven3:38888
+      - RAVEN_License_Eula_Accepted=true
+    env_file: ./license.env
