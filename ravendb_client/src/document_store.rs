@@ -34,6 +34,7 @@ pub struct DocumentStoreBuilder {
     database_name: Option<String>,
     dns_overrides: Option<DnsOverrides>,
     document_store_urls: Vec<String>,
+    proxy_address: Option<String>,
 }
 
 impl DocumentStoreBuilder {
@@ -49,6 +50,11 @@ impl DocumentStoreBuilder {
 
     pub fn set_client_certificate(mut self, certificate_path: &str) -> Self {
         self.client_certificate_path = Some(certificate_path.to_string());
+        self
+    }
+
+    pub fn set_proxy_address(mut self, proxy_address: &str) -> Self {
+        self.proxy_address = Some(proxy_address.to_string());
         self
     }
 
@@ -131,6 +137,7 @@ impl DocumentStoreBuilder {
             cluster_topology: topology_info,
             database_name: self.database_name.clone(),
             dns_overrides: self.dns_overrides.clone(),
+            proxy_address: self.proxy_address.clone(),
         };
 
         tracing::trace!("Initial Configuration: {:?}", &initial_config);
@@ -150,6 +157,7 @@ impl Default for DocumentStoreBuilder {
             database_name: None,
             dns_overrides: None,
             document_store_urls: Vec::new(),
+            proxy_address: None,
         }
     }
 }
@@ -242,12 +250,13 @@ impl DocumentStore {
 }
 
 struct DocumentStoreActor {
-    receiver: mpsc::Receiver<DocumentStoreMessage>,
     //_async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     client_identity: Option<reqwest::Identity>,
     dns_overrides: Option<DnsOverrides>,
     _conventions: Option<Conventions>,
     _database_name: Option<String>,
+    proxy_address: Option<String>,
+    receiver: mpsc::Receiver<DocumentStoreMessage>,
     _trust_store: Option<CertificatePlaceholder>,
     topology_info: ClusterTopologyInfo,
     topology_updater: Option<JoinHandle<()>>,
@@ -263,6 +272,7 @@ impl DocumentStoreActor {
             client_identity: initial_config.client_identity,
             _database_name: initial_config.database_name,
             dns_overrides: initial_config.dns_overrides,
+            proxy_address: initial_config.proxy_address,
             receiver,
             _trust_store: Some(CertificatePlaceholder),
             topology_info: initial_config.cluster_topology,
@@ -290,6 +300,7 @@ impl DocumentStoreActor {
                     dns_overrides: Option<DnsOverrides>,
                     identity: Option<Identity>,
                     node_url: Url,
+                    proxy_address: Option<String>,
                     topology_respond_to:
                         oneshot::Sender<Result<Option<ClusterTopologyInfo>, DocumentStoreError>>,
                     topology_etag: i64,
@@ -319,6 +330,7 @@ impl DocumentStoreActor {
                     dns_overrides: self.dns_overrides.clone(),
                     identity: self.client_identity.clone(),
                     node_url,
+                    proxy_address: self.proxy_address.clone(),
                     topology_respond_to: topo_tx,
                     topology_etag: self.topology_info.etag,
                     topology_updater_running,
@@ -329,6 +341,7 @@ impl DocumentStoreActor {
                     let result = DocumentStoreActor::send_raven_command_request_to_server(
                         taskdata.identity.clone(),
                         taskdata.dns_overrides.clone(),
+                        taskdata.proxy_address.clone(),
                         raven_command,
                         taskdata.topology_etag,
                     )
@@ -344,10 +357,11 @@ impl DocumentStoreActor {
                                     DocumentStoreActor::refresh_topology_task(
                                         taskdata.identity,
                                         taskdata.dns_overrides,
-                                        taskdata.node_url,
                                         headers,
+                                        taskdata.proxy_address,
                                         taskdata.topology_respond_to,
                                         taskdata.topology_etag,
+                                        taskdata.node_url,
                                     )
                                     .await
                                 });
@@ -392,10 +406,11 @@ impl DocumentStoreActor {
     async fn refresh_topology_task(
         client_identity: Option<Identity>,
         dns_overrides: Option<DnsOverrides>,
-        url: Url,
         headers: HeaderMap,
+        proxy_address: Option<String>,
         respond_to: oneshot::Sender<Result<Option<ClusterTopologyInfo>, DocumentStoreError>>,
         topology_etag: i64,
+        url: Url,
     ) {
         tracing::trace!("Attempting topology update");
         tracing::trace!("Request headers are: {:#?}", &headers);
@@ -411,6 +426,7 @@ impl DocumentStoreActor {
                 let result = match DocumentStoreActor::send_raven_command_request_to_server(
                     client_identity,
                     dns_overrides,
+                    proxy_address,
                     get_topology,
                     topology_etag,
                 )
@@ -451,10 +467,16 @@ impl DocumentStoreActor {
     async fn send_raven_command_request_to_server(
         client_identity: Option<Identity>,
         dns_overrides: Option<DnsOverrides>,
+        proxy_address: Option<String>,
         raven_command: RavenCommand,
         topology_etag: i64,
     ) -> anyhow::Result<reqwest::Response> {
-        let mut client = reqwest::Client::builder(); //.proxy(reqwest::Proxy::http("http://localhost:5555")?);
+        let mut client = reqwest::Client::builder();
+
+        if let Some(proxy) = proxy_address {
+            tracing::trace!("Proxy set to `{}`", &proxy);
+            client = client.proxy(reqwest::Proxy::http(proxy)?);
+        }
 
         if let Some(identity) = client_identity.clone() {
             client = client.identity(identity).use_rustls_tls();
@@ -547,6 +569,7 @@ pub(crate) struct DocumentStoreInitialConfiguration {
     cluster_topology: ClusterTopologyInfo,
     database_name: Option<String>,
     dns_overrides: Option<DnsOverrides>,
+    proxy_address: Option<String>,
 }
 
 // Placeholders below

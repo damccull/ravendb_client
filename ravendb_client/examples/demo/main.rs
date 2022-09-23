@@ -24,6 +24,7 @@ async fn main() -> anyhow::Result<()> {
 #[instrument(level = "info", name = "Running")]
 async fn run() -> anyhow::Result<()> {
     let scheme: String = std::env::var("RAVEN_SCHEME").unwrap_or_else(|_| "http".to_string());
+    let proxy = std::env::var("RAVEN_PROXY").ok();
 
     let mut dns_overrides = HashMap::<String, IpAddr>::new();
     dns_overrides.insert("raven1".to_string(), "127.0.0.1".parse()?);
@@ -42,6 +43,10 @@ async fn run() -> anyhow::Result<()> {
         document_store = document_store
             .set_urls(&["http://raven1:8080"])
             .set_dns_overrides(dns_overrides);
+    }
+
+    if let Some(proxy) = proxy {
+        document_store = document_store.set_proxy_address(proxy.as_str());
     }
 
     let document_store = document_store.build()?;
