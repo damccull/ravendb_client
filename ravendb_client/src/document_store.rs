@@ -473,11 +473,6 @@ impl DocumentStoreActor {
     ) -> anyhow::Result<reqwest::Response> {
         let mut client = reqwest::Client::builder();
 
-        if let Some(proxy) = proxy_address {
-            tracing::trace!("Proxy set to `{}`", &proxy);
-            client = client.proxy(reqwest::Proxy::http(proxy)?);
-        }
-
         if let Some(identity) = client_identity.clone() {
             client = client.identity(identity).use_rustls_tls();
         }
@@ -489,13 +484,20 @@ impl DocumentStoreActor {
             .map(|(k, v)| (k, SocketAddr::new(v, 0)))
             .collect::<HashMap<String, SocketAddr>>();
 
-        tracing::trace!(
-            "Adding these to dns overrides for this request: {:?}",
-            &overrides
-        );
-
         for (domain, address) in overrides {
+            tracing::trace!(
+                "Adding `{}->{}` to dns overrides for this request.",
+                domain,
+                address
+            );
             client = client.resolve(domain.as_str(), address);
+        }
+
+        if let Some(proxy) = proxy_address {
+            tracing::trace!("Proxy set to `{}`", &proxy);
+            client = client.proxy(reqwest::Proxy::http(proxy)?);
+        } else {
+            tracing::trace!("No proxy define. Using system settings.");
         }
 
         let client = client.build()?;
