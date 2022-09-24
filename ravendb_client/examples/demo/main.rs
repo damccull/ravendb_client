@@ -41,7 +41,7 @@ async fn run() -> anyhow::Result<()> {
     } else {
         tracing::warn!("`RAVEN_SCHEME` not set or set to 'http'. Connecting insecurly and without authentication.");
         document_store = document_store
-            .set_urls(&["http://raven1:8080"])
+            .set_urls(&["http://localhost:8080"])
             .set_dns_overrides(dns_overrides);
     }
 
