@@ -505,6 +505,7 @@ impl DocumentStoreActor {
         let mut request = raven_command.get_http_request()?;
         let headerval = HeaderValue::from_str(topology_etag.to_string().as_str())?;
         request.headers_mut().append("Topology-Etag", headerval);
+        tracing::trace!("Request Headers: {:#?}", &request.headers());
         let response = client.execute(request).await?;
 
         Ok(response)
