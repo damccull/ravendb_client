@@ -69,6 +69,7 @@ async fn run() -> anyhow::Result<()> {
 
     thread::sleep(Duration::from_secs(2));
 
+    // Make the request againt so ensure we're using the new updated topology urls
     match session
         .get_all_documents_for_database("sample", Some(1), None)
         .await
