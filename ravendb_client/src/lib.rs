@@ -30,9 +30,7 @@ mod document_conventions;
 mod document_session;
 mod document_store;
 
-pub mod async_multi_database_hi_lo_id_generator;
 pub mod cluster_topology;
-pub mod events;
 pub mod raven_command;
 
 pub use document_session::*;
