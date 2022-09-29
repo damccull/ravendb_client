@@ -18,6 +18,7 @@ pub enum DocumentStoreMessage {
     GetServerAddress {
         respond_to: oneshot::Sender<Result<Url, anyhow::Error>>,
     },
+    UpdateTopology,
 }
 
 #[derive(Clone, Copy, Debug)]
