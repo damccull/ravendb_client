@@ -275,8 +275,13 @@ impl DocumentStoreActor {
 
 #[instrument(level = "debug", name = "Running Document Store Actor", skip(actor))]
 pub async fn run_document_store_actor(mut actor: DocumentStoreActor) {
+    let mut topology_update_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
     loop {
         tokio::select! {
+            _ = topology_update_timer.tick() => {
+                tracing::debug!("Updating topology via timer.");
+                let _= actor.sender_internal.send(DocumentStoreMessage::UpdateTopology).await;
+            },
             opt_msg = actor.receiver.recv() => {
                 let msg = match opt_msg {
                     Some(msg) => msg,
