@@ -275,9 +275,6 @@ impl DocumentStoreActor {
 
 #[instrument(level = "debug", name = "Running Document Store Actor", skip(actor))]
 pub async fn run_document_store_actor(mut actor: DocumentStoreActor) {
-    // while let Some(msg) = actor.receiver.recv().await {
-    //     actor.handle_message(msg).await;
-    // }
     loop {
         tokio::select! {
             opt_msg = actor.receiver.recv() => {
