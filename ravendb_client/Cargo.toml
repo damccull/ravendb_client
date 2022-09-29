@@ -13,12 +13,12 @@ name = "sandbox"
 anyhow = "1.0.65"
 dyn-clone = "1.0.9"
 reqwest = { version = "0.11.12", features = ["rustls-tls","json"] }
-thiserror = "1.0.35"
+thiserror = "1.0.37"
 tracing = { version = "0.1.36", features = ["log"] }
 tokio = { version = "1.21.1", features = ["full"] }
 url = { version = "2.3.1", features = ["serde"] }
 rand = "0.8.5"
-serde = { version = "1.0.144", features = ["derive"] }
+serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.85"
 uuid = { version = "1.1.2", features = ["serde", "v4"] }
 
