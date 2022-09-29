@@ -2,14 +2,8 @@ use std::{collections::HashMap, net::SocketAddr};
 
 use anyhow::Context;
 use rand::seq::IteratorRandom;
-use reqwest::{
-    header::HeaderValue,
-    Identity, Url,
-};
-use tokio::{
-    sync::mpsc,
-    task::JoinHandle,
-};
+use reqwest::{header::HeaderValue, Identity, Url};
+use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::{instrument, Span};
 use uuid::Uuid;
 
