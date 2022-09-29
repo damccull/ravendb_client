@@ -16,8 +16,6 @@ async fn main() -> anyhow::Result<()> {
         run().await
     })
     .await?;
-
-    thread::sleep(Duration::from_secs(2));
     Ok(())
 }
 
@@ -82,6 +80,8 @@ async fn run() -> anyhow::Result<()> {
             return Err(e);
         }
     };
+
+    thread::sleep(Duration::from_secs(2));
 
     Ok(())
 }
