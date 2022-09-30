@@ -252,7 +252,7 @@ impl DocumentStoreActor {
         Ok(response)
     }
 
-    /// See doc comments for [`DocumentStore`](crate::DocumentStore::get_request_executor)
+    /// See doc comments for [`DocumentStore::get_request_executor`](crate::DocumentStore::get_request_executor)
     #[instrument(level = "debug", skip(self))]
     async fn get_request_executor(
         &mut self,
