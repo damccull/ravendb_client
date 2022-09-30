@@ -14,6 +14,7 @@ use tokio::sync::oneshot;
 
 use crate::cluster_topology::ClusterTopologyInfo;
 use crate::raven_command::RavenCommand;
+use crate::request_executor::RequestExecutor;
 
 pub type DnsOverrides = HashMap<String, IpAddr>;
 
@@ -27,6 +28,10 @@ pub enum DocumentStoreMessage {
     },
     GetDatabase {
         respond_to: oneshot::Sender<Option<String>>,
+    },
+    GetRequestExecutor {
+        database_name: Option<String>,
+        respond_to: oneshot::Sender<Result<RequestExecutor, DocumentStoreError>>,
     },
     GetServerAddress {
         respond_to: oneshot::Sender<Result<Url, anyhow::Error>>,

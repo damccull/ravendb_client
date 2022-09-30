@@ -1,13 +1,14 @@
 use tokio::sync::mpsc;
+use tracing::instrument;
 
 use super::{
-    request_executor_actor::run_request_executor_actor, RequestExecutorActor,
+    request_executor_actor::run_request_executor_actor, RequestExecutorActor, RequestExecutorError,
     RequestExecutorMessage,
 };
 
 #[derive(Clone, Debug)]
 pub struct RequestExecutor {
-    sender: mpsc::Sender<RequestExecutorMessage>,
+    _sender: mpsc::Sender<RequestExecutorMessage>,
 }
 
 impl RequestExecutor {
@@ -17,6 +18,18 @@ impl RequestExecutor {
 
         tokio::spawn(run_request_executor_actor(actor));
 
-        Self { sender }
+        Self { _sender: sender }
+    }
+
+    pub(crate) fn new_for_single_node_with_configuration_updates() -> Self {
+        RequestExecutor::new()
+    }
+
+    #[instrument(level = "DEBUG", skip(self))]
+    pub(crate) fn execute_request(
+        &self,
+        request: reqwest::Request,
+    ) -> Result<(), RequestExecutorError> {
+        todo!()
     }
 }

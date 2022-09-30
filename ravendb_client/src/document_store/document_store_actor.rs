@@ -9,21 +9,23 @@ use uuid::Uuid;
 
 use crate::{
     cluster_topology::ClusterTopologyInfo,
+    document_conventions::DocumentConventions,
     raven_command::{RavenCommand, RavenCommandVariant},
-    CertificatePlaceholder, Conventions, DnsOverrides, DocumentStoreError,
-    DocumentStoreInitialConfiguration, DocumentStoreMessage,
+    request_executor::RequestExecutor,
+    CertificatePlaceholder, DnsOverrides, DocumentStoreError, DocumentStoreInitialConfiguration,
+    DocumentStoreMessage,
 };
 
 pub struct DocumentStoreActor {
-    //_async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     client_identity: Option<reqwest::Identity>,
     dns_overrides: Option<DnsOverrides>,
-    _conventions: Option<Conventions>,
+    conventions: DocumentConventions,
     database_name: Option<String>,
     proxy_address: Option<String>,
     receiver: mpsc::Receiver<DocumentStoreMessage>,
     /// Allows the actor to receive messages from itself.
     receiver_internal: mpsc::Receiver<DocumentStoreMessage>,
+    request_executors: HashMap<String, RequestExecutor>,
     /// Allows the actor to send messages to itself.
     sender_internal: mpsc::Sender<DocumentStoreMessage>,
     _trust_store: Option<CertificatePlaceholder>,
@@ -37,13 +39,14 @@ impl DocumentStoreActor {
     ) -> Self {
         let (tx, rx) = mpsc::channel(10);
         Self {
-            _conventions: Default::default(),
+            conventions: DocumentConventions::default(),
             client_identity: initial_config.client_identity,
             database_name: initial_config.database_name,
             dns_overrides: initial_config.dns_overrides,
             proxy_address: initial_config.proxy_address,
             receiver,
             receiver_internal: rx,
+            request_executors: HashMap::default(),
             sender_internal: tx,
             _trust_store: Some(CertificatePlaceholder),
             topology_info: initial_config.cluster_topology,
@@ -107,6 +110,13 @@ impl DocumentStoreActor {
             }
             DocumentStoreMessage::GetDatabase { respond_to } => {
                 let _ = respond_to.send(self.database_name.clone());
+            }
+            DocumentStoreMessage::GetRequestExecutor {
+                database_name,
+                respond_to,
+            } => {
+                let result = self.get_request_executor(database_name).await;
+                let _ = respond_to.send(result);
             }
             DocumentStoreMessage::GetServerAddress { respond_to } => {
                 let result = self.get_server_address().await;
@@ -240,6 +250,54 @@ impl DocumentStoreActor {
         let response = client.execute(request).await?;
 
         Ok(response)
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    async fn get_request_executor(
+        &mut self,
+        database: Option<String>,
+    ) -> std::result::Result<RequestExecutor, DocumentStoreError> {
+        // Get the database name that was passed in, or from the document store
+        let database = match database {
+            Some(db) => db,
+            None => match self.database_name.as_ref() {
+                Some(db) => db.clone(),
+                None => {
+                    return Err(DocumentStoreError::UnexpectedError(anyhow::anyhow!(
+                        "Unable to determine which database to operate on"
+                    )));
+                }
+            },
+        };
+
+        // See if there is a stored executor for the database
+        if let Some(executor) = self.request_executors.get(&database) {
+            return Ok(executor.clone());
+        }
+
+        // Creates a RequestExecutor for a normal cluster
+        let create_request_executor = || -> RequestExecutor {
+            // TODO: Figure out how to allow the request executor to publish events
+            RequestExecutor::new()
+        };
+
+        // Creates a request executor for a single, specific server, ignoring topology
+        let create_request_executor_for_single_node = || -> RequestExecutor {
+            // TODO: Figure out how to allow the request executor to publish events
+            RequestExecutor::new_for_single_node_with_configuration_updates()
+        };
+
+        let executor = if self.conventions.disable_topology_updates() {
+            create_request_executor_for_single_node()
+        } else {
+            create_request_executor()
+        };
+
+        // Clone the executor handle store it in the document store
+        self.request_executors.insert(database, executor.clone());
+
+        // Send the executor handle back to the requestor
+        Ok(executor)
     }
 
     #[instrument(

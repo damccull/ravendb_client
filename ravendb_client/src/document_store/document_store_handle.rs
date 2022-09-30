@@ -4,9 +4,9 @@ use tokio::sync::{mpsc, oneshot};
 use tracing::instrument;
 
 use crate::{
-    raven_command::RavenCommand, run_document_store_actor, DocumentSession, DocumentStoreActor,
-    DocumentStoreBuilder, DocumentStoreError, DocumentStoreInitialConfiguration,
-    DocumentStoreMessage,
+    raven_command::RavenCommand, request_executor::RequestExecutor, run_document_store_actor,
+    DocumentSession, DocumentStoreActor, DocumentStoreBuilder, DocumentStoreError,
+    DocumentStoreInitialConfiguration, DocumentStoreMessage,
 };
 
 /**
@@ -93,5 +93,21 @@ impl DocumentStore {
     pub fn open_session(&self) -> Result<DocumentSession, DocumentStoreError> {
         let session = DocumentSession::new(self.clone());
         Ok(session)
+    }
+
+    pub async fn get_request_executor(
+        &self,
+        database: Option<String>,
+    ) -> Result<RequestExecutor, anyhow::Error> {
+        let (tx, rx) = oneshot::channel();
+
+        let _ = self
+            .sender
+            .send(DocumentStoreMessage::GetRequestExecutor {
+                database_name: database,
+                respond_to: tx,
+            })
+            .await;
+        rx.await?.context("DocumentStoreActor task has been killed")
     }
 }
