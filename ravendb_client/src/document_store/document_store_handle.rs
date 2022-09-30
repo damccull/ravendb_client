@@ -90,7 +90,7 @@ impl DocumentStore {
         rx.await?.context("DocumentStoreActor task has been killed")
     }
 
-    pub async fn open_session(&self) -> Result<DocumentSession, DocumentStoreError> {
+    pub fn open_session(&self) -> Result<DocumentSession, DocumentStoreError> {
         let session = DocumentSession::new(self.clone());
         Ok(session)
     }

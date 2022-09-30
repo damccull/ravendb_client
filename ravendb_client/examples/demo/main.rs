@@ -50,7 +50,7 @@ async fn run() -> anyhow::Result<()> {
     let document_store = document_store.build()?;
     tracing::info!("DocumentStore created.");
 
-    let session = document_store.open_session().await?;
+    let session = document_store.open_session()?;
 
     match session
         .get_all_documents_for_database("sample", Some(1), None)
