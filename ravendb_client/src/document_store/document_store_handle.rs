@@ -95,6 +95,11 @@ impl DocumentStore {
         Ok(session)
     }
 
+    /// Returns a [`RequestExecutor`] for the supplied database name, or if no database name was supplied,
+    /// for the database name already stored on the [`DocumentStoreActor`]. If no [`RequestExecutor`] is
+    /// already stored for this database name, one will be created and stored, then returned.
+    ///
+    /// Returns a [`DocumentStoreError`] if no database name was supplied and none is already stored.
     pub async fn get_request_executor(
         &self,
         database: Option<String>,
