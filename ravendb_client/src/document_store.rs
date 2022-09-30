@@ -25,6 +25,9 @@ pub enum DocumentStoreMessage {
         // TODO: Change this to a DocumentStoreError or maybe a RavenError
         respond_to: oneshot::Sender<Result<reqwest::Response, anyhow::Error>>,
     },
+    GetDatabase {
+        respond_to: oneshot::Sender<Option<String>>,
+    },
     GetServerAddress {
         respond_to: oneshot::Sender<Result<Url, anyhow::Error>>,
     },

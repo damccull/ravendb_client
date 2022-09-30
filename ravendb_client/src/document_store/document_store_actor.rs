@@ -19,7 +19,7 @@ pub struct DocumentStoreActor {
     client_identity: Option<reqwest::Identity>,
     dns_overrides: Option<DnsOverrides>,
     _conventions: Option<Conventions>,
-    _database_name: Option<String>,
+    database_name: Option<String>,
     proxy_address: Option<String>,
     receiver: mpsc::Receiver<DocumentStoreMessage>,
     /// Allows the actor to receive messages from itself.
@@ -39,7 +39,7 @@ impl DocumentStoreActor {
         Self {
             _conventions: Default::default(),
             client_identity: initial_config.client_identity,
-            _database_name: initial_config.database_name,
+            database_name: initial_config.database_name,
             dns_overrides: initial_config.dns_overrides,
             proxy_address: initial_config.proxy_address,
             receiver,
@@ -104,6 +104,9 @@ impl DocumentStoreActor {
                     // Send the result back to the caller
                     let _ = respond_to.send(result);
                 });
+            }
+            DocumentStoreMessage::GetDatabase { respond_to } => {
+                let _ = respond_to.send(self.database_name.clone());
             }
             DocumentStoreMessage::GetServerAddress { respond_to } => {
                 let result = self.get_server_address().await;
