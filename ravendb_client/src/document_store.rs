@@ -39,18 +39,6 @@ pub enum DocumentStoreMessage {
     UpdateTopology,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum DocumentStoreState {
-    /// [`DocumentStore`] was initialized but has since been closed.
-    Closed,
-
-    /// [`DocumentStore`] is initialized.
-    Initialized,
-
-    /// [`DocumentStore`] has not yet been initialized.
-    Unitilialized,
-}
-
 /// Requests to initialize.
 #[derive(Debug)]
 pub struct DocumentStoreInitialConfiguration {

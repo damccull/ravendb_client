@@ -276,6 +276,15 @@ impl DocumentStoreActor {
             return Ok(executor.clone());
         }
 
+        // let get_topology_urls = |&self| {
+        //     let url = self
+        //     .topology_info
+        //     .topology
+        //     .all_nodes
+        //     .values();
+
+        // };
+
         // Creates a RequestExecutor for a normal cluster
         let create_request_executor = || -> RequestExecutor {
             // TODO: Figure out how to allow the request executor to publish events
