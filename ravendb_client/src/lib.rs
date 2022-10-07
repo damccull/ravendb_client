@@ -33,6 +33,7 @@ mod document_store;
 pub mod cluster_topology;
 pub mod raven_command;
 mod request_executor;
+mod server_node;
 
 pub use document_session::*;
 pub use document_store::*;

@@ -1,15 +1,43 @@
+use reqwest::{Identity, Url};
 use tokio::sync::mpsc;
-use tracing::instrument;
+use tracing::{instrument, Id};
+
+use crate::{document_conventions::DocumentConventions, server_node::ServerNode};
 
 use super::RequestExecutorMessage;
 
 pub struct RequestExecutorActor {
+    conventions: DocumentConventions,
+    database: String,
+    identity: Identity,
     receiver: mpsc::Receiver<RequestExecutorMessage>,
+    reqwest_client: reqwest::Client,
 }
 
 impl RequestExecutorActor {
-    pub(crate) fn new(receiver: mpsc::Receiver<RequestExecutorMessage>) -> Self {
-        Self { receiver }
+    pub(crate) fn new(
+        receiver: mpsc::Receiver<RequestExecutorMessage>,
+        database: String,
+        identity: Identity,
+        conventions: DocumentConventions,
+    ) -> Self {
+        // Reqwest client maintains an internal connection pool. Reuse it so long as this
+        // RequestExecutor lives.
+        let reqwest_client = reqwest::Client::new();
+
+        // if let Some(identity) = client_identity.clone() {
+        //                 client = client.identity(identity).use_rustls_tls();
+        //             }
+
+        //TODO: Kick off first topology update
+
+        Self {
+            conventions,
+            database,
+            identity,
+            receiver,
+            reqwest_client,
+        }
     }
     async fn handle_message(&self, msg: RequestExecutorMessage) {
         match msg {
@@ -17,6 +45,17 @@ impl RequestExecutorActor {
                 respond_to,
                 request,
             } => todo!(),
+            RequestExecutorMessage::FirstTopologyUpdate { initial_urls } => todo!(),
+        }
+    }
+
+    async fn first_topology_update(&self, initial_urls: Vec<Url>) {
+        // Note: Java client implementation validates URL strings here.
+        // This rust library does not because the strings are validated by the DocumentStoreBuilder
+        // and are already valid `reqwest::Url`s before they arrive at this point.
+
+        for url in initial_urls {
+            let server_node = ServerNode::new(url, self.database.clone());
         }
     }
 }
