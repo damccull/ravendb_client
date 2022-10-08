@@ -58,6 +58,10 @@ impl RequestExecutorActor {
             let server_node = ServerNode::new(url, self.database.clone());
         }
     }
+
+    async fn update_topology(parameters: UpdateTopologyParameters) {
+        
+    }
 }
 
 // #[instrument(level = "debug", skip(client_identity))]
