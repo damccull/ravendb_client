@@ -288,13 +288,15 @@ impl DocumentStoreActor {
         // Creates a RequestExecutor for a normal cluster
         let create_request_executor = || -> RequestExecutor {
             // TODO: Figure out how to allow the request executor to publish events
-            RequestExecutor::new()
+            todo!()
+            //RequestExecutor::new()
         };
 
         // Creates a request executor for a single, specific server, ignoring topology
         let create_request_executor_for_single_node = || -> RequestExecutor {
             // TODO: Figure out how to allow the request executor to publish events
-            RequestExecutor::new_for_single_node_with_configuration_updates()
+            todo!()
+            //RequestExecutor::new_for_single_node_with_configuration_updates()
         };
 
         let executor = if self.conventions.disable_topology_updates() {

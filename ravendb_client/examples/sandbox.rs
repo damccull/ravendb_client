@@ -1,4 +1,7 @@
-use ravendb_client::raven_command::{RavenCommand, RavenCommandVariant};
+use ravendb_client::{
+    raven_command::{RavenCommand, RavenCommandVariant},
+    ravendb_error::RavenDbError,
+};
 use url::Url;
 
 #[tokio::main]
@@ -8,6 +11,8 @@ async fn main() -> anyhow::Result<()> {
         command: RavenCommandVariant::GetClusterTopology,
     };
     let request = raven_command.get_http_request()?;
-    dbg!(request);
+
+    let e:Result<(),RavenDbError> = Err(RavenDbError::DatabaseDoesNotExist("MyDb".to_string()));
+    dbg!(request, e);
     Ok(())
 }
