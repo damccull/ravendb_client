@@ -58,10 +58,12 @@ impl RequestExecutorActor {
                 request,
             } => todo!(),
             RequestExecutorMessage::FirstTopologyUpdate { initial_urls } => {
-                let result = self.first_topology_update(initial_urls).await;
+                let result = self
+                    .first_topology_update(initial_urls, self.application_id)
+                    .await;
                 if let Err(e) = result {
                     tracing::error!(
-                        "An error occurred while running the first topology update. Caused by: {}",
+                        "An error occurred while running the first topology update. Caused by: {:?}",
                         e
                     );
                 }
@@ -147,7 +149,10 @@ impl RequestExecutorActor {
         self.last_known_urls = initial_urls;
 
         // Return the errors to the caller to deal with
-        let server_errors = server_errors.iter().map(|e| (e.0, e.1)).collect::<Vec<_>>();
+        let server_errors = server_errors
+            .iter()
+            .map(|e| (e.0.clone(), e.1))
+            .collect::<Vec<_>>();
         Err(server_errors)
     }
 
