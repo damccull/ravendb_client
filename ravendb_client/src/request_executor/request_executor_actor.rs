@@ -137,9 +137,9 @@ impl RequestExecutorActor {
         // Create a new NodeSelector from the newly created topology.
         self.node_selector = NodeSelector::new(topology);
 
-        // No timer initialized here like JVM client. Actor runner handles the timer.
-
+        // Ensure the user did not somehow pass an empty list of URLs.
         if initial_urls.len() > 0 {
+            // No timer initialized here like JVM client. Actor runner handles the timer.
             return Ok(());
         }
 
@@ -147,12 +147,8 @@ impl RequestExecutorActor {
         // TODO: Fix the above comment when you figure out what this is for.
         self.last_known_urls = initial_urls;
 
-        //Log all the errors out to tracing
-        //TODO: Push these back to caller in the future
+        // Return the errors to the caller to deal with
         let server_errors = server_errors.iter().map(|e| (e.0, e.1)).collect::<Vec<_>>();
-
-        //TODO: finish this
-
         Err(server_errors)
     }
 
