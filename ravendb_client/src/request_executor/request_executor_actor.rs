@@ -1,6 +1,7 @@
 use reqwest::{Identity, Url};
 use tokio::sync::mpsc;
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
     document_conventions::DocumentConventions, server_node::ServerNode, topology::Topology,
@@ -9,6 +10,10 @@ use crate::{
 use super::{RequestExecutorError, RequestExecutorMessage};
 
 pub struct RequestExecutorActor {
+    /// Allows the server to warn if [`DocumentStore`] is being recreated too many times
+    /// instead of once per application. RequestExecutor should be cached and reused, so
+    /// this shouldn't change after initialization.
+    application_id: Uuid,
     conventions: DocumentConventions,
     database: String,
     identity: Identity,
@@ -36,6 +41,7 @@ impl RequestExecutorActor {
         //TODO: Kick off first topology update
 
         Self {
+            application_id: Uuid::new_v4(),
             conventions,
             database,
             identity,
@@ -67,7 +73,8 @@ impl RequestExecutorActor {
     async fn first_topology_update(
         &self,
         initial_urls: Vec<Url>,
-    ) -> Result<(), Vec<(String, RequestExecutorError)>> {
+        application_id: Uuid,
+    ) -> Result<(), Vec<(Url, RequestExecutorError)>> {
         // Note: Java client implementation validates URL strings here.
         // This rust library does not because the strings are validated by the DocumentStoreBuilder
         // and are already valid `reqwest::Url`s before they arrive at this point.
@@ -80,6 +87,7 @@ impl RequestExecutorActor {
                 server_node,
                 timeout_in_ms: i32::MAX,
                 force_update: false,
+                application_id,
             };
 
             let x = RequestExecutorActor::update_topology(update_parameters).await;
@@ -171,7 +179,7 @@ struct UpdateTopologyParameters {
     server_node: ServerNode,
     timeout_in_ms: i32,
     force_update: bool,
-    //application_identifier:Uuid, //TODO: this is a static global in jvm, why?
+    application_id: Uuid,
 }
 
 // #[instrument(level = "debug", skip(client_identity))]
