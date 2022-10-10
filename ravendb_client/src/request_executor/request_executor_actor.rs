@@ -103,15 +103,6 @@ impl RequestExecutorActor {
                     server_errors.push((url, e));
                 }
             }
-
-            // if x.is_err() {
-            //     server_errors.push((url, x.unwrap_err()));
-            // } else {
-            //     // Yay, the topology is updated, return early
-            //     tracing::info!("Initial topology update complete");
-            //     self.topology_taken_from_node = Some(server_node);
-            //     return Ok(());
-            // }
             // No timer initialized here like JVM client. Actor runner handles the timer.
         }
         // If this point is reached, none of the provided URLs succeeded in providing a topology
