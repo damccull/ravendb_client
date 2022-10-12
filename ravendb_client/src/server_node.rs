@@ -1,6 +1,6 @@
 use reqwest::Url;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ServerNode {
     url: Url,
     database: String,
