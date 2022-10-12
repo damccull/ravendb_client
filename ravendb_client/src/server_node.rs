@@ -17,7 +17,7 @@ impl ServerNode {
         }
     }
 
-    pub fn set_cluster_tag(&self, tag: String) {
+    pub fn set_cluster_tag(&mut self, tag: String) {
         self.cluster_tag = tag;
     }
 
@@ -25,7 +25,7 @@ impl ServerNode {
         self.cluster_tag.as_str()
     }
 
-    pub fn set_server_role(&self, role: ServerRole) {
+    pub fn set_server_role(&mut self, role: ServerRole) {
         self.server_role = role;
     }
 
