@@ -1,5 +1,7 @@
 use reqwest::Url;
 
+use crate::cluster_topology::ClusterTopology;
+
 #[derive(Debug, Clone)]
 pub struct ServerNode {
     url: Url,
@@ -32,6 +34,15 @@ impl ServerNode {
     pub fn get_server_role(&self) -> ServerRole {
         self.server_role
     }
+
+    pub fn supports_atomic_cluster_writes() {
+        // Needs to check version number is >= 5.2
+        todo!()
+    }
+}
+
+pub fn create_server_nodes_from_topology(topology: ClusterTopology) -> Vec<ServerNode> {
+    todo!()
 }
 
 #[derive(Debug, Default, Clone, Copy)]
