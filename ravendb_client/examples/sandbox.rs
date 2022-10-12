@@ -12,7 +12,7 @@ async fn main() -> anyhow::Result<()> {
     };
     let request = raven_command.get_http_request()?;
 
-    let e:Result<(),RavenDbError> = Err(RavenDbError::DatabaseDoesNotExist("MyDb".to_string()));
+    let e: Result<(), RavenDbError> = Err(RavenDbError::DatabaseDoesNotExist("MyDb".to_string()));
     dbg!(request, e);
     Ok(())
 }
