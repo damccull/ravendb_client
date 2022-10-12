@@ -31,10 +31,11 @@ mod document_session;
 mod document_store;
 
 pub mod cluster_topology;
+pub mod node_selector;
 pub mod raven_command;
+pub mod ravendb_error;
 mod request_executor;
 mod server_node;
-pub mod ravendb_error;
 pub mod topology;
 
 pub use document_session::*;
