@@ -11,7 +11,7 @@ use tokio::sync::oneshot;
 pub(crate) enum RequestExecutorMessage {
     ExecuteRequest {
         respond_to: oneshot::Sender<Result<(), RequestExecutorError>>,
-        request: reqwest::Request,
+        request: Box<reqwest::Request>,
     },
     FirstTopologyUpdate {
         initial_urls: Vec<Url>,

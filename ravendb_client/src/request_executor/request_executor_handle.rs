@@ -64,7 +64,7 @@ impl RequestExecutor {
         let (respond_to, receiver) = oneshot::channel();
         let executemsg = RequestExecutorMessage::ExecuteRequest {
             respond_to,
-            request,
+            request: Box::new(request),
         };
         let _ = self.sender.send(executemsg).await;
 
