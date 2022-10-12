@@ -26,6 +26,9 @@ succeed or fail together.
 When `session` is dropped, it'll close any open handles appropriately on its own.
 */
 
+// TODO: REMOVE THIS
+#![allow(dead_code, unreachable_code, unused_variables)]
+
 mod document_conventions;
 mod document_session;
 mod document_store;
