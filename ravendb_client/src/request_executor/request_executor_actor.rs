@@ -4,7 +4,8 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    document_conventions::DocumentConventions, server_node::ServerNode, topology::Topology,
+    document_conventions::DocumentConventions, node_selector::NodeSelector,
+    server_node::ServerNode, topology::Topology,
 };
 
 use super::{RequestExecutorError, RequestExecutorMessage};
@@ -18,6 +19,7 @@ pub struct RequestExecutorActor {
     database: String,
     identity: Identity,
     last_known_urls: Vec<Url>,
+    node_selector: Option<NodeSelector>,
     receiver: mpsc::Receiver<RequestExecutorMessage>,
     reqwest_client: reqwest::Client,
     topology_taken_from_node: Option<ServerNode>, // TODO: Find a better name. This is the node our topology came from.
@@ -46,12 +48,13 @@ impl RequestExecutorActor {
             database,
             identity,
             last_known_urls: Vec::default(),
+            node_selector: Option::default(),
             receiver,
             reqwest_client,
             topology_taken_from_node: Option::default(),
         }
     }
-    async fn handle_message(&self, msg: RequestExecutorMessage) {
+    async fn handle_message(&mut self, msg: RequestExecutorMessage) {
         match msg {
             RequestExecutorMessage::ExecuteRequest {
                 respond_to,
@@ -73,7 +76,7 @@ impl RequestExecutorActor {
 
     #[instrument(level = "debug", skip(self))]
     async fn first_topology_update(
-        &self,
+        &mut self,
         initial_urls: Vec<Url>,
         application_id: Uuid,
     ) -> Result<(), Vec<(Url, RequestExecutorError)>> {
@@ -83,10 +86,10 @@ impl RequestExecutorActor {
 
         let mut server_errors = Vec::new();
 
-        for url in &initial_urls {
+        for url in initial_urls.iter() {
             let server_node = ServerNode::new(url.clone(), self.database.clone());
             let update_parameters = UpdateTopologyParameters {
-                server_node,
+                server_node: server_node.clone(),
                 timeout_in_ms: i32::MAX,
                 force_update: false,
                 application_id,
@@ -102,7 +105,7 @@ impl RequestExecutorActor {
                     return Ok(());
                 }
                 Err(e) => {
-                    server_errors.push((url, e));
+                    server_errors.push((url.clone(), e));
                 }
             }
             // No timer initialized here like JVM client. Actor runner handles the timer.
@@ -119,9 +122,9 @@ impl RequestExecutorActor {
         if nodes.is_none() {
             nodes = Some(
                 initial_urls
-                    .into_iter()
+                    .iter()
                     .map(|url| {
-                        let server_node = ServerNode::new(url.clone(), self.database.clone());
+                        let mut server_node = ServerNode::new(url.clone(), self.database.clone());
                         server_node.set_cluster_tag("!".to_string());
                         server_node
                     })
@@ -136,10 +139,10 @@ impl RequestExecutorActor {
         };
 
         // Create a new NodeSelector from the newly created topology.
-        self.node_selector = NodeSelector::new(topology);
+        self.node_selector = Some(NodeSelector::new(Some(topology)));
 
         // Ensure the user did not somehow pass an empty list of URLs.
-        if initial_urls.len() > 0 {
+        if !initial_urls.is_empty() {
             // No timer initialized here like JVM client. Actor runner handles the timer.
             return Ok(());
         }
@@ -150,8 +153,8 @@ impl RequestExecutorActor {
 
         // Return the errors to the caller to deal with
         let server_errors = server_errors
-            .iter()
-            .map(|e| (e.0.clone(), e.1))
+            .into_iter()
+            .map(|e| (e.0, e.1))
             .collect::<Vec<_>>();
         Err(server_errors)
     }
