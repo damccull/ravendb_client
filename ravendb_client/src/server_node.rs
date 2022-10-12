@@ -21,7 +21,7 @@ impl ServerNode {
         self.cluster_tag = tag;
     }
 
-    pub fn get_cluster_Tag(&self) -> &str {
+    pub fn get_cluster_tag(&self) -> &str {
         self.cluster_tag.as_str()
     }
 
