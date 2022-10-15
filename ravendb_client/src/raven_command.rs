@@ -23,50 +23,74 @@ pub struct RavenCommand {
 impl RavenCommand {
     /// Returns a [`reqwest::Request`] for the specific [`RavenCommandVariant`].
     pub fn get_http_request(&self) -> anyhow::Result<reqwest::Request> {
-        // Create the base request. This specifies a placeholder url and a GET method
-        // by default. In each command, replace the url by joining the endpoint path to
-        // the server base url. Also replace the method with the right one for the command.
-        let base_request = reqwest::Client::new().request(Method::GET, "http://placeholder");
+        //TODO: Replace this client with one passed in somehow from the client cache
+        let client = reqwest::Client::new();
 
-        tracing::debug!("{:?}", base_request);
+        let request_config = RequestConfig {
+            client,
+            base_url: self.base_server_url.to_owned(),
+        };
+
         // Handle specific command options
         let request = match &self.command {
             RavenCommandVariant::GetClusterTopology => {
-                let mut request = base_request.build()?;
-                *request.url_mut() = self.base_server_url.join("cluster/topology")?;
-                request
+                create_get_cluster_topology_request(request_config)?
             }
             RavenCommandVariant::GetAllDocumentsFromDatabase {
                 database,
                 page_size,
                 start,
-            } => {
-                let mut request = base_request.build()?;
-                *request.url_mut() = self
-                    .base_server_url
-                    .join("databases/")?
-                    .join(format!("{}/", database).as_str())?
-                    .join("docs")?;
-
-                let mut query_string_parts = Vec::new();
-                if let Some(page_size) = page_size {
-                    query_string_parts.push(format!("pageSize={}", page_size))
-                }
-                if let Some(start) = start {
-                    query_string_parts.push(format!("start={}", start))
-                }
-                let query_string = query_string_parts.join("&");
-
-                request.url_mut().set_query(Some(&query_string));
-
-                request
-            }
+            } => create_get_all_documents_from_database_request(
+                request_config,
+                database.clone(),
+                *page_size,
+                *start,
+            )?,
         };
 
         Ok(request)
     }
 }
 
+fn create_get_cluster_topology_request(config: RequestConfig) -> anyhow::Result<reqwest::Request> {
+    let request = config
+        .client
+        .request(Method::GET, config.base_url.join("cluseter/topology")?)
+        .build()?;
+    Ok(request)
+}
+
+fn create_get_all_documents_from_database_request(
+    config: RequestConfig,
+    database: String,
+    page_size: Option<i64>,
+    start: Option<i64>,
+) -> anyhow::Result<reqwest::Request> {
+    //Create a vec to hold optional parts of the query string
+    let mut query_string_parts = Vec::new();
+
+    // Check if `page_size` and `start` are Some and add to the vec if so
+    if let Some(page_size) = page_size {
+        query_string_parts.push(format!("pageSize={}", page_size))
+    }
+    if let Some(start) = start {
+        query_string_parts.push(format!("start={}", start))
+    }
+
+    // Make the full query string by joining the parts with &
+    let query_string = query_string_parts.join("&");
+
+    let mut url = config
+        .base_url
+        .join("databases/")?
+        .join(format!("{}/", database).as_str())?
+        .join("docs")?;
+    url.set_query(Some(query_string.as_str()));
+
+    let request = config.client.request(Method::GET, url).build()?;
+
+    Ok(request)
+}
 /// Represents all operations that can be sent to the server.
 /// Contained inside a [`RavenCommand`]. Holds all data relevant
 /// to the specific command to be sent.
@@ -78,4 +102,10 @@ pub enum RavenCommandVariant {
         page_size: Option<i64>,
         start: Option<i64>,
     },
+}
+
+#[derive(Debug)]
+pub struct RequestConfig {
+    client: reqwest::Client,
+    base_url: Url,
 }
