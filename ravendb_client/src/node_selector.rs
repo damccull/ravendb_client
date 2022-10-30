@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{server_node::ServerNode, topology::Topology};
 
 ///! Requirements for the NodeSelector
@@ -12,28 +14,45 @@ use crate::{server_node::ServerNode, topology::Topology};
 /// 4. Return a specific node
 /// 5. Return a "preferred" node
 /// 6. Return the topology if requested
+
 #[derive(Debug)]
 pub struct NodeSelector {
-    update_fastest_node_timer: bool,
-    state: NodeSelectorState,
+    /// Whether or not to run speed tests
+    run_speed_test: bool,
+    /// Holds the topology
+    topology: Option<Topology>,
+    /// Counts the node failures
+    node_failures: HashMap<ServerNode, u32>,
+    /// Maintains a list of response times (in milliseconds) for each node in the topology
+    node_response_speed_ms: HashMap<ServerNode, u32>,
 }
 impl NodeSelector {
     pub fn new(topology: Option<Topology>) -> Self {
         Self {
-            update_fastest_node_timer: false,
-            state: NodeSelectorState {
-                topology: todo!(),
-                nodes: todo!(),
-            },
+            run_speed_test: false,
+            topology: None,
+            node_failures: HashMap::new(),
+            node_response_speed_ms: HashMap::new(),
         }
     }
-}
 
-#[derive(Debug)]
-pub struct NodeSelectorState {
-    // Note: JVM version uses atomics here to thread-safely handle counters.
-    // The actor-based architecture of the RequestExecutor means this isn't necessary
-    // in rust since this will only ever be handled by a single thread.
-    topology: Topology,
-    nodes: Vec<ServerNode>,
+    /// Returns the fastest node available if one exists.
+    pub fn getFastestNode() -> Option<ServerNode> {
+        todo!()
+    }
+
+    /// Returns a specific node for the given session id.
+    pub fn getNodeBySessionId(session_id: i32) -> Option<ServerNode> {
+        todo!()
+    }
+
+    /// Returns the currently preferred node.
+    pub fn getPreferredNode() -> Option<ServerNode> {
+        todo!()
+    }
+
+    /// Returns the requested node by node tag.
+    pub fn getRequestedNode(tag: String) -> Option<ServerNode> {
+        todo!()
+    }
 }
