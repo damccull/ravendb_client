@@ -41,7 +41,7 @@ impl ServerNode {
     }
 }
 
-pub fn create_server_nodes_from_topology(topology: ClusterTopology) -> Vec<ServerNode> {
+pub fn create_server_nodes_from_cluster_topology(topology: ClusterTopology) -> Vec<ServerNode> {
     todo!()
 }
 
