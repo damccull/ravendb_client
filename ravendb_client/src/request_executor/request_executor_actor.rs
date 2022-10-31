@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
+use rand::{seq::IteratorRandom, thread_rng};
 use reqwest::{Identity, Url};
 use tokio::sync::mpsc;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    document_conventions::DocumentConventions, node_selector::NodeSelector,
-    server_node::ServerNode, database_topology::DatabaseTopology,
+    database_topology::DatabaseTopology, document_conventions::DocumentConventions,
+    node_selector::NodeSelector, server_node::ServerNode,
 };
 
 use super::{RequestExecutorError, RequestExecutorMessage};
@@ -193,6 +194,63 @@ impl RequestExecutorActor {
     fn get_topology(&self) -> Option<DatabaseTopology> {
         todo!()
     }
+
+    /// Returns the fastest node available if one exists.
+    fn get_fastest_node(&self) -> Option<ServerNode> {
+        // TODO: actually return the fastest node
+        // For now just return the first node
+        self.get_preferred_node()
+    }
+
+    /// Returns a specific node for the given session id.
+    fn get_node_by_session_id(&self, session_id: i32) -> Option<ServerNode> {
+        // TODO: actually return the session_id node.
+        // For now just return preferred node
+        self.get_preferred_node()
+    }
+
+    /// Returns the currently preferred node.
+    /// Right now this looks for the first node with 0 failures and returns it.
+    /// On the off chance all nodes have failures, it returns
+    fn get_preferred_node(&self) -> Option<ServerNode> {
+        let x = self.topology.as_ref().and_then(|t| {
+            t.node_failures
+                .iter()
+                .find(|(node, count)| **count == 0)
+                .and_then(|(node_key, count)| {
+                    self.topology
+                        .as_ref()
+                        .map(|topology| topology.nodes[node_key].clone())
+                })
+        });
+
+        if x.is_some() {
+            return x;
+        }
+
+        // If all nodes are marked with failures, just select one at random. This may still
+        // be `None` if the topology is empty.
+        // NOTE: JVM version rotates through an index but this lib uses a HashMap to store
+        // the nodes and ordering is irrelevant, so a random choice makes more sense.
+        self.select_random_node()
+    }
+
+    /// Returns the requested node by node tag.
+    fn get_requested_node(&self, tag: String) -> Option<ServerNode> {
+        // TODO: actually return the fastest node
+        // For now just return the first node
+        self.get_preferred_node()
+    }
+
+    /// Returns a random node if all are faulted.
+    fn select_random_node(&self) -> Option<ServerNode> {
+        if let Some(topology) = &self.topology {
+            let mut rng = thread_rng();
+            topology.nodes.values().choose(&mut rng).cloned()
+        } else {
+            None
+        }
+    }
 }
 
 struct UpdateTopologyParameters {
@@ -253,6 +311,7 @@ struct UpdateTopologyParameters {
 #[instrument(level = "debug", name = "Running Document Store Actor", skip(actor))]
 pub async fn run_request_executor_actor(mut actor: RequestExecutorActor) {
     //TODO: Run a 5 minute timer to send topology update requests to the actor
+    //TODO: Run a 1 minute timer to request database topology updates
     while let Some(msg) = actor.receiver.recv().await {
         actor.handle_message(msg).await;
     }
