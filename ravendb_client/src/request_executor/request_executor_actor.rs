@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use reqwest::{Identity, Url};
 use tokio::sync::mpsc;
 use tracing::instrument;
@@ -128,15 +130,21 @@ impl RequestExecutorActor {
                     .map(|url| {
                         let mut server_node = ServerNode::new(url.clone(), self.database.clone());
                         server_node.set_cluster_tag("!".to_string());
-                        server_node
+                        (server_node.clone(), server_node)
                     })
-                    .collect::<Vec<_>>(),
+                    .collect::<HashMap<ServerNode, ServerNode>>(),
             );
         }
 
         // Create a new topology from the NodeSelector topology, or from the manufactured one above.
         let topology = Topology {
-            nodes,
+            nodes: {
+                if let Some(nodes) = nodes {
+                    nodes
+                } else {
+                    HashMap::new()
+                }
+            },
             ..Default::default()
         };
 
@@ -167,8 +175,12 @@ impl RequestExecutorActor {
         todo!()
     }
 
-    fn get_topology_nodes(&self) -> Option<Vec<ServerNode>> {
-        self.get_topology().and_then(|t| t.nodes)
+    fn get_topology_nodes(&self) -> Option<HashMap<ServerNode, ServerNode>> {
+        if let Some(topology) = self.get_topology() {
+            Some(topology.nodes)
+        } else {
+            None
+        }
     }
 
     fn get_topology(&self) -> Option<Topology> {
