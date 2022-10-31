@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     document_conventions::DocumentConventions, node_selector::NodeSelector,
-    server_node::ServerNode, topology::Topology,
+    server_node::ServerNode, database_topology::DatabaseTopology,
 };
 
 use super::{RequestExecutorError, RequestExecutorMessage};
@@ -137,7 +137,7 @@ impl RequestExecutorActor {
         }
 
         // Create a new topology from the NodeSelector topology, or from the manufactured one above.
-        let topology = Topology {
+        let topology = DatabaseTopology {
             nodes: {
                 if let Some(nodes) = nodes {
                     nodes
@@ -183,7 +183,7 @@ impl RequestExecutorActor {
         }
     }
 
-    fn get_topology(&self) -> Option<Topology> {
+    fn get_topology(&self) -> Option<DatabaseTopology> {
         todo!()
     }
 }

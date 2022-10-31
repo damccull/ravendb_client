@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use rand::{seq::IteratorRandom, thread_rng};
 
-use crate::{server_node::ServerNode, topology::Topology};
+use crate::{server_node::ServerNode, database_topology::DatabaseTopology};
 
 ///! Requirements for the NodeSelector
 /// 1. Maintain the following state:
@@ -22,14 +22,14 @@ pub struct NodeSelector {
     /// Whether or not to run speed tests
     run_speed_test: bool,
     /// Holds the topology
-    topology: Option<Topology>,
+    topology: Option<DatabaseTopology>,
     /// Counts the node failures
     node_failures: HashMap<ServerNode, u32>,
     /// Maintains a list of response times (in milliseconds) for each node in the topology
     node_response_speed_ms: HashMap<ServerNode, u32>,
 }
 impl NodeSelector {
-    pub fn new(topology: Option<Topology>) -> Self {
+    pub fn new(topology: Option<DatabaseTopology>) -> Self {
         Self {
             run_speed_test: false,
             topology,
