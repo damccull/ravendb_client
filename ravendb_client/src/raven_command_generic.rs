@@ -8,7 +8,7 @@ pub struct ExampleRavenCommand;
 impl RavenCommand for ExampleRavenCommand {
     type Result = ExampleRavenCommandResult;
 
-    fn get_request(client: reqwest::Client) -> reqwest::Request{
+    fn get_request(client: reqwest::Client) -> reqwest::Request {
         todo!()
     }
 }

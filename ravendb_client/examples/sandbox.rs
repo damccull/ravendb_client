@@ -15,9 +15,7 @@ async fn main() -> anyhow::Result<()> {
 
     let client = Client::new();
     let f = client.execute(request);
-    let r:Result<Response,reqwest::Error> = tokio::spawn(async move {
-        f.await
-    }).await.unwrap();
+    let r: Result<Response, reqwest::Error> = tokio::spawn(async move { f.await }).await.unwrap();
     dbg!(r);
 
     let e: Result<(), RavenDbError> = Err(RavenDbError::DatabaseDoesNotExist("MyDb".to_string()));

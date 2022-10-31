@@ -36,11 +36,11 @@ mod document_store;
 pub mod cluster_topology;
 pub mod node_selector;
 pub mod raven_command;
+pub mod raven_command_generic;
 pub mod ravendb_error;
 mod request_executor;
 mod server_node;
 pub mod topology;
-pub mod raven_command_generic;
 
 pub use document_session::*;
 pub use document_store::*;
