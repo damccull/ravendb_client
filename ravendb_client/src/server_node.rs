@@ -2,7 +2,7 @@ use reqwest::Url;
 
 use crate::cluster_topology::ClusterTopology;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct ServerNode {
     url: Url,
     database: String,
@@ -45,7 +45,7 @@ pub fn create_server_nodes_from_cluster_topology(topology: ClusterTopology) -> V
     todo!()
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ServerRole {
     #[default]
     None,
