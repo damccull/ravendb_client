@@ -32,7 +32,7 @@ impl NodeSelector {
     pub fn new(topology: Option<Topology>) -> Self {
         Self {
             run_speed_test: false,
-            topology: None,
+            topology,
             node_failures: HashMap::new(),
             node_response_speed_ms: HashMap::new(),
         }
