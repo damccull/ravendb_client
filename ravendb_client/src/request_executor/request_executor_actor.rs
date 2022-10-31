@@ -27,6 +27,11 @@ pub struct RequestExecutorActor {
     reqwest_client: reqwest::Client,
     /// Node the topology came from
     topology_source_node: Option<ServerNode>,
+
+    /// Whether or not to run speed tests
+    run_speed_test: bool,
+    /// Holds the topology
+    topology: Option<DatabaseTopology>,
 }
 
 impl RequestExecutorActor {
@@ -56,6 +61,8 @@ impl RequestExecutorActor {
             receiver,
             reqwest_client,
             topology_source_node: Option::default(),
+            run_speed_test: false,
+            topology: None,
         }
     }
     async fn handle_message(&mut self, msg: RequestExecutorMessage) {
