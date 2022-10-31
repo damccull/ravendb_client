@@ -21,8 +21,10 @@ pub struct RequestExecutorActor {
     last_known_urls: Vec<Url>,
     node_selector: Option<NodeSelector>,
     receiver: mpsc::Receiver<RequestExecutorMessage>,
+    /// Cached http client. Clone this into tokio::spawn() for each request, it's cheap.
     reqwest_client: reqwest::Client,
-    topology_taken_from_node: Option<ServerNode>, // TODO: Find a better name. This is the node our topology came from.
+    /// Node the topology came from
+    topology_source_node: Option<ServerNode>,
 }
 
 impl RequestExecutorActor {
@@ -51,7 +53,7 @@ impl RequestExecutorActor {
             node_selector: Option::default(),
             receiver,
             reqwest_client,
-            topology_taken_from_node: Option::default(),
+            topology_source_node: Option::default(),
         }
     }
     async fn handle_message(&mut self, msg: RequestExecutorMessage) {
@@ -101,7 +103,7 @@ impl RequestExecutorActor {
                 Ok(_) => {
                     // Yay, the topology is updated, return early
                     tracing::info!("Initial topology update complete");
-                    self.topology_taken_from_node = Some(server_node);
+                    self.topology_source_node = Some(server_node);
                     return Ok(());
                 }
                 Err(e) => {
