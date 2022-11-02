@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::server_node::ServerNode;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct DatabaseTopology {
     /// Represents the latest version of the topology
     pub etag: u64,

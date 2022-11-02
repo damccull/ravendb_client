@@ -25,14 +25,15 @@ impl DocumentSession {
             command: RavenCommandVariant::GetClusterTopology,
         };
 
-        let response = self
-            .document_store
-            .execute_raven_command(raven_command)
-            .await?;
+        // let response = self
+        //     .document_store
+        //     .execute_raven_command(raven_command)
+        //     .await?;
 
-        let topology = response.json::<ClusterTopologyInfo>().await?;
-        tracing::info!("Cluster topology downloaded");
-        Ok(topology)
+        // let topology = response.json::<ClusterTopologyInfo>().await?;
+        // tracing::info!("Cluster topology downloaded");
+        // Ok(topology)
+        todo!()
     }
 
     #[instrument(level = "info", name = "Get All Documents for Database", skip(self))]
@@ -51,14 +52,15 @@ impl DocumentSession {
             },
         };
 
-        let response = self
-            .document_store
-            .execute_raven_command(raven_command)
-            .await?;
+        // let response = self
+        //     .document_store
+        //     .execute_raven_command(raven_command)
+        //     .await?;
 
-        let topology = response.text().await?;
-        tracing::info!("Got documents from database `{}`", database);
-        Ok(topology)
+        // let topology = response.text().await?;
+        // tracing::info!("Got documents from database `{}`", database);
+        // Ok(topology)
+        todo!()
     }
 }
 

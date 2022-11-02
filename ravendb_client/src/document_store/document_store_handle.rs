@@ -50,30 +50,30 @@ impl DocumentStore {
         Self { sender }
     }
 
-    #[instrument(
-        level = "debug",
-        name = "Actor Handle - Execute Raven Command",
-        skip(self)
-    )]
-    pub async fn execute_raven_command(
-        &self,
-        raven_command: RavenCommand,
-    ) -> Result<reqwest::Response, anyhow::Error> {
-        tracing::trace!("Creating oneshot channel");
-        let (tx, rx) = oneshot::channel();
+    // #[instrument(
+    //     level = "debug",
+    //     name = "Actor Handle - Execute Raven Command",
+    //     skip(self)
+    // )]
+    // pub async fn execute_raven_command(
+    //     &self,
+    //     raven_command: RavenCommand,
+    // ) -> Result<reqwest::Response, anyhow::Error> {
+    //     tracing::trace!("Creating oneshot channel");
+    //     let (tx, rx) = oneshot::channel();
 
-        tracing::trace!("Sending message to actor");
-        let _ = self
-            .sender
-            .send(DocumentStoreMessage::ExecuteRavenCommand {
-                raven_command,
-                respond_to: tx,
-            })
-            .await;
+    //     tracing::trace!("Sending message to actor");
+    //     let _ = self
+    //         .sender
+    //         .send(DocumentStoreMessage::ExecuteRavenCommand {
+    //             raven_command,
+    //             respond_to: tx,
+    //         })
+    //         .await;
 
-        tracing::trace!("Waiting for oneshot to return");
-        rx.await?.context("DocumentStoreActor task has been killed")
-    }
+    //     tracing::trace!("Waiting for oneshot to return");
+    //     rx.await?.context("DocumentStoreActor task has been killed")
+    // }
 
     #[instrument(
         level = "debug",

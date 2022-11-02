@@ -18,7 +18,7 @@ impl RequestExecutor {
     pub(crate) fn new(
         initial_urls: Vec<Url>,
         database: String,
-        identity: Identity,
+        identity:Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
         let (sender, receiver) = mpsc::channel(8);
@@ -26,6 +26,7 @@ impl RequestExecutor {
 
         tokio::spawn(run_request_executor_actor(actor));
 
+        // Tell the actor to do it's first topology update
         let _ = sender.blocking_send(RequestExecutorMessage::FirstTopologyUpdate { initial_urls });
 
         Self { sender }
@@ -34,7 +35,7 @@ impl RequestExecutor {
     pub(crate) fn new_for_single_node_with_configuration_updates(
         url: Url,
         database: String,
-        identity: Identity,
+        identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
         //TODO: Finish this method
@@ -49,7 +50,7 @@ impl RequestExecutor {
     pub(crate) fn new_for_single_node_without_configuration_updates(
         url: Url,
         database: String,
-        identity: Identity,
+        identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
         //TODO: Finish this method

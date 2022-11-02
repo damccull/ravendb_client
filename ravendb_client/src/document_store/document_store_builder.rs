@@ -69,18 +69,18 @@ impl DocumentStoreBuilder {
         }
 
         // Validate URLS
-        let initial_node_list = validate_urls(
+        let initial_urls = validate_urls(
             self.document_store_urls.as_slice(),
             self.client_certificate_path.is_some(),
         )?;
 
-        let topology_info = ClusterTopologyInfo {
-            topology: ClusterTopology {
-                all_nodes: initial_node_list,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
+        // let topology_info = ClusterTopologyInfo {
+        //     topology: ClusterTopology {
+        //         all_nodes: initial_node_list,
+        //         ..Default::default()
+        //     },
+        //     ..Default::default()
+        // };
 
         let identity = match &self.client_certificate_path {
             Some(certpath) => {
@@ -114,7 +114,8 @@ impl DocumentStoreBuilder {
         let initial_config = DocumentStoreInitialConfiguration {
             //async_document_id_generator: self.async_document_id_generator.clone(),
             client_identity: identity,
-            cluster_topology: topology_info,
+            // cluster_topology: topology_info,
+            initial_urls: initial_urls.values().cloned().collect::<Vec<_>>(),
             database_name: self.database_name.clone(),
             dns_overrides: self.dns_overrides.clone(),
             proxy_address: self.proxy_address.clone(),

@@ -20,7 +20,7 @@ pub struct RequestExecutorActor {
     application_id: Uuid,
     conventions: DocumentConventions,
     database: String,
-    identity: Identity,
+    identity: Option<Identity>,
     last_known_urls: Vec<Url>,
     node_selector: Option<NodeSelector>,
     receiver: mpsc::Receiver<RequestExecutorMessage>,
@@ -39,7 +39,7 @@ impl RequestExecutorActor {
     pub(crate) fn new(
         receiver: mpsc::Receiver<RequestExecutorMessage>,
         database: String,
-        identity: Identity,
+        identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
         // Reqwest client maintains an internal connection pool. Reuse it so long as this
@@ -56,7 +56,7 @@ impl RequestExecutorActor {
             application_id: Uuid::new_v4(),
             conventions,
             database,
-            identity,
+            identity: Option::default(),
             last_known_urls: Vec::default(),
             node_selector: Option::default(),
             receiver,
@@ -192,7 +192,7 @@ impl RequestExecutorActor {
     }
 
     fn get_topology(&self) -> Option<DatabaseTopology> {
-        todo!()
+        self.topology.clone()
     }
 
     /// Returns the fastest node available if one exists.
@@ -216,8 +216,8 @@ impl RequestExecutorActor {
         let x = self.topology.as_ref().and_then(|t| {
             t.node_failures
                 .iter()
-                .find(|(node, count)| **count == 0)
-                .and_then(|(node_key, count)| {
+                .find(|(_, count)| **count == 0)
+                .and_then(|(node_key, _)| {
                     self.topology
                         .as_ref()
                         .map(|topology| topology.nodes[node_key].clone())

@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DocumentConventions {
     disable_topology_updates: bool,
     _send_application_identified: bool,

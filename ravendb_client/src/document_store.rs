@@ -21,11 +21,11 @@ pub type DnsOverrides = HashMap<String, IpAddr>;
 #[derive(Debug)]
 pub enum DocumentStoreMessage {
     /// Executes the provided [`RavenCommand`].
-    ExecuteRavenCommand {
-        raven_command: RavenCommand,
-        // TODO: Change this to a DocumentStoreError or maybe a RavenError
-        respond_to: oneshot::Sender<Result<reqwest::Response, anyhow::Error>>,
-    },
+    // ExecuteRavenCommand {
+    //     raven_command: RavenCommand,
+    //     // TODO: Change this to a DocumentStoreError or maybe a RavenError
+    //     respond_to: oneshot::Sender<Result<reqwest::Response, anyhow::Error>>,
+    // },
     GetDatabase {
         respond_to: oneshot::Sender<Option<String>>,
     },
@@ -36,7 +36,7 @@ pub enum DocumentStoreMessage {
     GetServerAddress {
         respond_to: oneshot::Sender<Result<Url, anyhow::Error>>,
     },
-    UpdateTopology,
+    // UpdateTopology,
 }
 
 /// Requests to initialize.
@@ -44,7 +44,8 @@ pub enum DocumentStoreMessage {
 pub struct DocumentStoreInitialConfiguration {
     //async_document_id_generator: Box<dyn AsyncDocumentIdGenerator>,
     pub(crate) client_identity: Option<reqwest::Identity>,
-    pub(crate) cluster_topology: ClusterTopologyInfo,
+    // pub(crate) cluster_topology: ClusterTopologyInfo,
+    pub(crate) initial_urls: Vec<Url>,
     pub(crate) database_name: Option<String>,
     pub(crate) dns_overrides: Option<DnsOverrides>,
     pub(crate) proxy_address: Option<String>,
