@@ -21,14 +21,17 @@ async fn main() -> anyhow::Result<()> {
 
 #[instrument(level = "info", name = "Running")]
 async fn run() -> anyhow::Result<()> {
+    // Get the url scheme from environment variable
     let scheme: String = std::env::var("RAVEN_SCHEME").unwrap_or_else(|_| "http".to_string());
     let proxy = std::env::var("RAVEN_PROXY").ok();
 
+    // Override dns settings to use local servers
     let mut dns_overrides = HashMap::<String, IpAddr>::new();
     dns_overrides.insert("raven1".to_string(), "127.0.0.1".parse()?);
     dns_overrides.insert("raven2".to_string(), "127.0.0.1".parse()?);
     dns_overrides.insert("raven3".to_string(), "127.0.0.1".parse()?);
 
+    // Instantiate a new document store builder
     let mut document_store = DocumentStoreBuilder::new();
     if scheme == "https" {
         tracing::info!("`RAVEN_SCHEME` set to 'https'. Using pem file.");
@@ -47,39 +50,41 @@ async fn run() -> anyhow::Result<()> {
         document_store = document_store.set_proxy_address(proxy.as_str());
     }
 
+    // Actually build the document store
     let document_store = document_store.build()?;
     tracing::info!("DocumentStore created.");
 
+    // Open a new session from the document store
     let session = document_store.open_session()?;
 
-    match session
-        .get_all_documents_for_database("sample", Some(1), None)
-        .await
-    {
-        Ok(topology) => {
-            tracing::trace!("{:?}", &topology);
-        }
-        Err(e) => {
-            tracing::error!("Error happened: {}", &e);
-            return Err(e);
-        }
-    };
+    // match session
+    //     .get_all_documents_for_database("sample", Some(1), None)
+    //     .await
+    // {
+    //     Ok(topology) => {
+    //         tracing::trace!("{:?}", &topology);
+    //     }
+    //     Err(e) => {
+    //         tracing::error!("Error happened: {}", &e);
+    //         return Err(e);
+    //     }
+    // };
 
-    thread::sleep(Duration::from_secs(2));
+    // thread::sleep(Duration::from_secs(2));
 
     // Make the request againt so ensure we're using the new updated topology urls
-    match session
-        .get_all_documents_for_database("sample", Some(1), None)
-        .await
-    {
-        Ok(topology) => {
-            tracing::trace!("{:?}", &topology);
-        }
-        Err(e) => {
-            tracing::error!("Error happened: {}", &e);
-            return Err(e);
-        }
-    };
+    // match session
+    //     .get_all_documents_for_database("sample", Some(1), None)
+    //     .await
+    // {
+    //     Ok(topology) => {
+    //         tracing::trace!("{:?}", &topology);
+    //     }
+    //     Err(e) => {
+    //         tracing::error!("Error happened: {}", &e);
+    //         return Err(e);
+    //     }
+    // };
 
     thread::sleep(Duration::from_secs(2));
 
