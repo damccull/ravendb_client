@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::Read};
+use std::{collections::HashMap, fs::File, io::Read, net::IpAddr};
 
 use reqwest::Url;
 use tracing::instrument;
@@ -9,7 +9,7 @@ use crate::{DnsOverrides, DocumentStore, DocumentStoreError, DocumentStoreInitia
 pub struct DocumentStoreBuilder {
     client_certificate_path: Option<String>,
     database_name: Option<String>,
-    dns_overrides: DnsOverrides,
+    dns_overrides: HashMap<String, String>,
     document_store_urls: Vec<String>,
     proxy_address: Option<String>,
 }
@@ -19,7 +19,12 @@ impl DocumentStoreBuilder {
         Self::default()
     }
 
-    pub fn set_dns_overrides(mut self, overrides: DnsOverrides) -> Self {
+    pub fn add_dns_override<S: Into<String>>(mut self, server: S, ip_address: S) -> Self {
+        self.dns_overrides.insert(server.into(), ip_address.into());
+        self
+    }
+
+    pub fn set_dns_overrides(mut self, overrides: HashMap<String, String>) -> Self {
         tracing::trace!("Adding to dns_overrides: {:?}", &overrides);
         self.dns_overrides = overrides;
         self
@@ -71,6 +76,16 @@ impl DocumentStoreBuilder {
             self.client_certificate_path.is_some(),
         )?;
 
+        // Parse dns overrides
+        let dns_overrides = self
+            .dns_overrides
+            .iter()
+            .map(|(server, ip)| {
+                let ip: IpAddr = ip.parse()?;
+                Ok((server.clone(), ip))
+            })
+            .collect::<Result<DnsOverrides, anyhow::Error>>()?;
+
         // let topology_info = ClusterTopologyInfo {
         //     topology: ClusterTopology {
         //         all_nodes: initial_node_list,
@@ -114,7 +129,7 @@ impl DocumentStoreBuilder {
             // cluster_topology: topology_info,
             initial_urls: initial_urls.values().cloned().collect::<Vec<_>>(),
             database_name: self.database_name.clone(),
-            dns_overrides: self.dns_overrides.clone(),
+            dns_overrides,
             proxy_address: self.proxy_address.clone(),
         };
 
@@ -133,7 +148,7 @@ impl Default for DocumentStoreBuilder {
             //async_document_id_generator: Box::new(AsyncMultiDatabaseHiLoIdGenerator::default()),
             client_certificate_path: None,
             database_name: None,
-            dns_overrides: DnsOverrides::default(),
+            dns_overrides: HashMap::default(),
             document_store_urls: Vec::new(),
             proxy_address: None,
         }

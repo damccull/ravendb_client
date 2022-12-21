@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::IpAddr, thread, time::Duration};
+use std::{collections::HashMap, thread, time::Duration};
 
 use ravendb_client::DocumentStoreBuilder;
 use tracing::{instrument, subscriber::set_global_default};
@@ -26,10 +26,10 @@ async fn run() -> anyhow::Result<()> {
     let proxy = std::env::var("RAVEN_PROXY").ok();
 
     // Override dns settings to use local servers
-    let mut dns_overrides = HashMap::<String, IpAddr>::new();
-    dns_overrides.insert("raven1".to_string(), "127.0.0.1".parse()?);
-    dns_overrides.insert("raven2".to_string(), "127.0.0.1".parse()?);
-    dns_overrides.insert("raven3".to_string(), "127.0.0.1".parse()?);
+    let mut dns_overrides = HashMap::<String, String>::new();
+    dns_overrides.insert("raven1".to_string(), "127.0.0.1".to_string());
+    dns_overrides.insert("raven2".to_string(), "127.0.0.1".to_string());
+    dns_overrides.insert("raven3".to_string(), "127.0.0.1".to_string());
 
     // Instantiate a new document store builder
     let mut document_store = DocumentStoreBuilder::new();
