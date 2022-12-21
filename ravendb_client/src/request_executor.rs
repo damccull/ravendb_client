@@ -8,12 +8,18 @@ pub use request_executor_handle::RequestExecutor;
 use reqwest::Url;
 use tokio::sync::oneshot;
 
+use crate::database_topology::DatabaseTopology;
+
 pub(crate) enum RequestExecutorMessage {
     ExecuteRequest {
         respond_to: oneshot::Sender<Result<(), RequestExecutorError>>,
         request: Box<reqwest::Request>,
     },
-    FirstTopologyUpdate {
+    InitialUpdateTopology {
         initial_urls: Vec<Url>,
+    },
+    UpdateTopology,
+    TopologyUpdated {
+        topology: DatabaseTopology,
     },
 }

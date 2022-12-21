@@ -24,8 +24,10 @@ pub struct RequestExecutorActor {
     last_known_urls: Vec<Url>,
     node_selector: Option<NodeSelector>,
     receiver: mpsc::Receiver<RequestExecutorMessage>,
+    receiver_internal: mpsc::Receiver<RequestExecutorMessage>,
     /// Cached http client. Clone this into tokio::spawn() for each request, it's cheap.
     reqwest_client: reqwest::Client,
+    sender_internal: mpsc::Sender<RequestExecutorMessage>,
     /// Node the topology came from
     topology_source_node: Option<ServerNode>,
 
@@ -46,6 +48,9 @@ impl RequestExecutorActor {
         // RequestExecutor lives.
         let reqwest_client = reqwest::Client::new();
 
+        // Create internal messaging channel
+        let (sender_internal, receiver_internal) = mpsc::channel(10);
+
         // if let Some(identity) = client_identity.clone() {
         //                 client = client.identity(identity).use_rustls_tls();
         //             }
@@ -60,7 +65,9 @@ impl RequestExecutorActor {
             last_known_urls: Vec::default(),
             node_selector: Option::default(),
             receiver,
+            receiver_internal,
             reqwest_client,
+            sender_internal,
             topology_source_node: Option::default(),
             run_speed_test: false,
             topology: None,
@@ -82,6 +89,12 @@ impl RequestExecutorActor {
                         e
                     );
                 }
+            }
+            RequestExecutorMessage::UpdateTopology => {
+                todo!();
+            }
+            RequestExecutorMessage::TopologyUpdated { topology } => {
+                todo!();
             }
         }
     }
@@ -311,9 +324,35 @@ struct UpdateTopologyParameters {
 
 #[instrument(level = "debug", name = "Running Document Store Actor", skip(actor))]
 pub async fn run_request_executor_actor(mut actor: RequestExecutorActor) {
-    //TODO: Run a 5 minute timer to send topology update requests to the actor
-    //TODO: Run a 1 minute timer to request database topology updates
-    while let Some(msg) = actor.receiver.recv().await {
-        actor.handle_message(msg).await;
+    // Run a 5 minute timer to send topology update requests to the actor
+    let mut topology_update_timer = tokio::time::interval(tokio::time::Duration::from_secs(60 * 5));
+    // Run a 1 minute timer to request database topology updates
+    let mut topology_update_timer_1min =
+        tokio::time::interval(tokio::time::Duration::from_secs(60));
+    loop {
+        tokio::select! {
+            // 5 minute timer
+            _ = topology_update_timer.tick() => {
+                tracing::debug!("Updating topology via timer.");
+                let _= actor.sender_internal.send(RequestExecutorMessage::UpdateTopology).await;
+            }
+            // 1 minute timer
+            _ = topology_update_timer_1min.tick() => {
+                tracing::debug!("Updating topology via 1 minute timer.");
+                let _ = actor.sender_internal.send(RequestExecutorMessage::UpdateTopology).await;
+            }
+            // Messages from the handle
+            external_message = actor.receiver.recv() => {
+                let msg = match external_message {
+                    Some(msg) => msg,
+                    None=> break,
+                };
+                actor.handle_message(msg).await;
+            },
+            // Messages from sub-tasks of this actor
+            Some(internal_message) = actor.receiver_internal.recv() => {
+                actor.handle_message(internal_message).await;
+            }
+        }
     }
 }
