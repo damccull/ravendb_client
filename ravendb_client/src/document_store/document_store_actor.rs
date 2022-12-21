@@ -300,7 +300,7 @@ impl DocumentStoreActor {
             //RequestExecutor::new_for_single_node_with_configuration_updates()
         };
 
-        let executor = if self.conventions.disable_topology_updates() {
+        let executor = if self.conventions.topology_updates_disabled() {
             create_request_executor_for_single_node()
         } else {
             create_request_executor()

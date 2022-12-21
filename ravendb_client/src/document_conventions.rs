@@ -1,7 +1,7 @@
 #[derive(Clone, Debug)]
 pub struct DocumentConventions {
     disable_topology_updates: bool,
-    _send_application_identified: bool,
+    send_application_identified: bool,
 }
 
 //TODO: Remove this when default can no longer be derived
@@ -10,15 +10,15 @@ impl Default for DocumentConventions {
     fn default() -> Self {
         Self {
             disable_topology_updates: bool::default(),
-            _send_application_identified: bool::default(),
+            send_application_identified: bool::default(),
         }
     }
 }
 // Mutators
 impl DocumentConventions {
-    pub fn _default_for_single_server() -> Self {
+    pub fn default_for_single_server() -> Self {
         Self {
-            _send_application_identified: false,
+            send_application_identified: false,
             ..Default::default()
         }
     }
@@ -26,7 +26,7 @@ impl DocumentConventions {
 
 // Getters
 impl DocumentConventions {
-    pub fn disable_topology_updates(&self) -> bool {
+    pub fn topology_updates_disabled(&self) -> bool {
         self.disable_topology_updates
     }
 }
