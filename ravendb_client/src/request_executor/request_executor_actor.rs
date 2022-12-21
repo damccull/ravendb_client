@@ -102,7 +102,7 @@ impl RequestExecutorActor {
             let server_node = ServerNode::new(url.clone(), self.database.clone());
             let update_parameters = UpdateTopologyParameters {
                 server_node: server_node.clone(),
-                timeout_in_ms: i32::MAX,
+                timeout_in_ms: i32::MAX, //TODO: Is this necessary? I believe it has something to do with a tcp timeout bug, but maybe only in java or C#
                 force_update: false,
                 application_id,
             };
