@@ -17,12 +17,12 @@ pub struct RequestExecutor {
 impl RequestExecutor {
     pub(crate) fn new(
         initial_urls: Vec<Url>,
-        database: String,
-        identity:Option<Identity>,
+        database_name: String,
+        identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let actor = RequestExecutorActor::new(receiver, database, identity, conventions);
+        let actor = RequestExecutorActor::new(receiver, database_name, identity, conventions);
 
         tokio::spawn(run_request_executor_actor(actor));
 
@@ -34,14 +34,14 @@ impl RequestExecutor {
 
     pub(crate) fn new_for_single_node_with_configuration_updates(
         url: Url,
-        database: String,
+        database_name: String,
         identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
         //TODO: Finish this method
         RequestExecutor::new_for_single_node_without_configuration_updates(
             url,
-            database,
+            database_name,
             identity,
             conventions,
         )
@@ -49,12 +49,12 @@ impl RequestExecutor {
 
     pub(crate) fn new_for_single_node_without_configuration_updates(
         url: Url,
-        database: String,
+        database_name: String,
         identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
         //TODO: Finish this method
-        RequestExecutor::new(vec![url], database, identity, conventions)
+        RequestExecutor::new(vec![url], database_name, identity, conventions)
     }
 
     #[instrument(level = "DEBUG", skip(self))]
