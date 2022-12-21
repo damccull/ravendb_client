@@ -74,7 +74,7 @@ impl RequestExecutorActor {
             } => todo!(),
             RequestExecutorMessage::FirstTopologyUpdate { initial_urls } => {
                 let result = self
-                    .first_topology_update(initial_urls, self.application_id)
+                    .update_topology(initial_urls, self.application_id)
                     .await;
                 if let Err(e) = result {
                     tracing::error!(
@@ -87,7 +87,7 @@ impl RequestExecutorActor {
     }
 
     #[instrument(level = "debug", skip(self))]
-    async fn first_topology_update(
+    async fn update_topology(
         &mut self,
         initial_urls: Vec<Url>,
         application_id: Uuid,
