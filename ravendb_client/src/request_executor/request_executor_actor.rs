@@ -107,7 +107,7 @@ impl RequestExecutorActor {
                 application_id,
             };
 
-            let x = RequestExecutorActor::update_topology(update_parameters).await;
+            let x = RequestExecutorActor::get_topology_from_node(update_parameters).await;
 
             match x {
                 Ok(_) => {
@@ -177,7 +177,7 @@ impl RequestExecutorActor {
         Err(server_errors)
     }
 
-    async fn update_topology(
+    async fn get_topology_from_node(
         parameters: UpdateTopologyParameters,
     ) -> Result<(), RequestExecutorError> {
         todo!()
