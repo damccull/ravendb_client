@@ -13,7 +13,7 @@ use crate::{
 
 pub struct DocumentStoreActor {
     client_identity: Option<reqwest::Identity>,
-    dns_overrides: Option<DnsOverrides>,
+    dns_overrides: DnsOverrides,
     conventions: DocumentConventions,
     database_name: Option<String>,
     initial_urls: Vec<Url>,
@@ -288,6 +288,7 @@ impl DocumentStoreActor {
             RequestExecutor::new(
                 self.initial_urls.clone(),
                 database.clone(),
+                self.dns_overrides.clone(),
                 self.client_identity.clone(),
                 self.conventions.clone(),
             )

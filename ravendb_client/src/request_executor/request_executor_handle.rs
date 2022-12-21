@@ -2,7 +2,7 @@ use reqwest::{Identity, Url};
 use tokio::sync::{mpsc, oneshot};
 use tracing::instrument;
 
-use crate::document_conventions::DocumentConventions;
+use crate::{document_conventions::DocumentConventions, DnsOverrides};
 
 use super::{
     request_executor_actor::run_request_executor_actor, RequestExecutorActor, RequestExecutorError,
@@ -18,11 +18,18 @@ impl RequestExecutor {
     pub(crate) fn new(
         initial_urls: Vec<Url>,
         database_name: String,
+        dns_overrides: DnsOverrides,
         identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let actor = RequestExecutorActor::new(receiver, database_name, identity, conventions);
+        let actor = RequestExecutorActor::new(
+            receiver,
+            database_name,
+            identity,
+            dns_overrides,
+            conventions,
+        );
 
         tokio::spawn(run_request_executor_actor(actor));
 
@@ -36,6 +43,7 @@ impl RequestExecutor {
     pub(crate) fn new_for_single_node_with_configuration_updates(
         url: Url,
         database_name: String,
+        dns_overrides: DnsOverrides,
         identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
@@ -43,6 +51,7 @@ impl RequestExecutor {
         RequestExecutor::new_for_single_node_without_configuration_updates(
             url,
             database_name,
+            dns_overrides,
             identity,
             conventions,
         )
@@ -51,11 +60,18 @@ impl RequestExecutor {
     pub(crate) fn new_for_single_node_without_configuration_updates(
         url: Url,
         database_name: String,
+        dns_overrides: DnsOverrides,
         identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
         //TODO: Finish this method
-        RequestExecutor::new(vec![url], database_name, identity, conventions)
+        RequestExecutor::new(
+            vec![url],
+            database_name,
+            dns_overrides,
+            identity,
+            conventions,
+        )
     }
 
     #[instrument(level = "DEBUG", skip(self))]

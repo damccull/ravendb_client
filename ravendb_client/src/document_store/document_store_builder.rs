@@ -9,7 +9,7 @@ use crate::{DnsOverrides, DocumentStore, DocumentStoreError, DocumentStoreInitia
 pub struct DocumentStoreBuilder {
     client_certificate_path: Option<String>,
     database_name: Option<String>,
-    dns_overrides: Option<DnsOverrides>,
+    dns_overrides: DnsOverrides,
     document_store_urls: Vec<String>,
     proxy_address: Option<String>,
 }
@@ -21,7 +21,7 @@ impl DocumentStoreBuilder {
 
     pub fn set_dns_overrides(mut self, overrides: DnsOverrides) -> Self {
         tracing::trace!("Adding to dns_overrides: {:?}", &overrides);
-        self.dns_overrides = Some(overrides);
+        self.dns_overrides = overrides;
         self
     }
 
@@ -133,7 +133,7 @@ impl Default for DocumentStoreBuilder {
             //async_document_id_generator: Box::new(AsyncMultiDatabaseHiLoIdGenerator::default()),
             client_certificate_path: None,
             database_name: None,
-            dns_overrides: None,
+            dns_overrides: DnsOverrides::default(),
             document_store_urls: Vec::new(),
             proxy_address: None,
         }

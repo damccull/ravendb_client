@@ -42,8 +42,12 @@ pub mod ravendb_error;
 mod request_executor;
 mod server_node;
 
+use std::{collections::HashMap, net::IpAddr};
+
 pub use document_session::*;
 pub use document_store::*;
+
+pub type DnsOverrides = HashMap<String, IpAddr>;
 
 pub fn error_chain_fmt(
     e: &impl std::error::Error,

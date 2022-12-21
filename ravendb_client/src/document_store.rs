@@ -9,12 +9,10 @@ pub use document_store_error::*;
 pub use document_store_handle::*;
 
 use reqwest::Url;
-use std::{collections::HashMap, net::IpAddr};
+
 use tokio::sync::oneshot;
 
-use crate::request_executor::RequestExecutor;
-
-pub type DnsOverrides = HashMap<String, IpAddr>;
+use crate::{request_executor::RequestExecutor, DnsOverrides};
 
 #[derive(Debug)]
 pub enum DocumentStoreMessage {
@@ -45,7 +43,7 @@ pub struct DocumentStoreInitialConfiguration {
     // pub(crate) cluster_topology: ClusterTopologyInfo,
     pub(crate) initial_urls: Vec<Url>,
     pub(crate) database_name: Option<String>,
-    pub(crate) dns_overrides: Option<DnsOverrides>,
+    pub(crate) dns_overrides: DnsOverrides,
     pub(crate) proxy_address: Option<String>,
 }
 
