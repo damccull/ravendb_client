@@ -27,7 +27,8 @@ impl RequestExecutor {
         tokio::spawn(run_request_executor_actor(actor));
 
         // Tell the actor to do it's first topology update
-        let _ = sender.blocking_send(RequestExecutorMessage::FirstTopologyUpdate { initial_urls });
+        let _ =
+            sender.blocking_send(RequestExecutorMessage::InitialUpdateTopology { initial_urls });
 
         Self { sender }
     }

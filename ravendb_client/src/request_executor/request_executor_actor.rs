@@ -79,13 +79,14 @@ impl RequestExecutorActor {
                 respond_to,
                 request,
             } => todo!(),
-            RequestExecutorMessage::FirstTopologyUpdate { initial_urls } => {
+            RequestExecutorMessage::InitialUpdateTopology { initial_urls } => {
+                //TODO: Change this to handle subsequent topology updates, or consider handling both initial and subsequent in same fn
                 let result = self
-                    .update_topology(initial_urls, self.application_id)
+                    .initial_update_topology(initial_urls, self.application_id)
                     .await;
                 if let Err(e) = result {
                     tracing::error!(
-                        "An error occurred while running the first topology update. Caused by: {:?}",
+                        "An error occurred while running the initial topology update. Caused by: {:?}",
                         e
                     );
                 }
@@ -100,11 +101,13 @@ impl RequestExecutorActor {
     }
 
     #[instrument(level = "debug", skip(self))]
-    async fn update_topology(
+    async fn initial_update_topology(
         &mut self,
         initial_urls: Vec<Url>,
         application_id: Uuid,
     ) -> Result<(), Vec<(Url, RequestExecutorError)>> {
+        //TODO: Consider handling both initial and subsequent topology updates in this same fn
+
         // Note: Java client implementation validates URL strings here.
         // This rust library does not because the strings are validated by the DocumentStoreBuilder
         // and are already valid `reqwest::Url`s before they arrive at this point.
