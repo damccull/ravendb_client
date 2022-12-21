@@ -8,12 +8,12 @@ pub use request_executor_handle::RequestExecutor;
 use reqwest::Url;
 use tokio::sync::oneshot;
 
-use crate::database_topology::DatabaseTopology;
+use crate::{database_topology::DatabaseTopology, raven_command::RavenCommand};
 
 pub(crate) enum RequestExecutorMessage {
-    ExecuteRequest {
+    ExecuteRavenCommand {
         respond_to: oneshot::Sender<Result<(), RequestExecutorError>>,
-        request: Box<reqwest::Request>,
+        request: RavenCommand,
     },
     InitialUpdateTopology {
         initial_urls: Vec<Url>,

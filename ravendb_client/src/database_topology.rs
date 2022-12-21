@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::server_node::ServerNode;
 
@@ -7,7 +7,7 @@ pub struct DatabaseTopology {
     /// Represents the latest version of the topology
     pub etag: u64,
     /// Holds the nodes.
-    pub nodes: HashMap<ServerNode, ServerNode>,
+    pub nodes: HashSet<ServerNode>,
     /// Counts the node failures
     pub node_failures: HashMap<ServerNode, u32>,
     /// Maintains a list of response times (in milliseconds) for each node in the topology

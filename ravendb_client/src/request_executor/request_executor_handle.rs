@@ -19,6 +19,7 @@ impl RequestExecutor {
         initial_urls: Vec<Url>,
         database_name: String,
         dns_overrides: DnsOverrides,
+        proxy_address: Option<String>,
         identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
@@ -28,6 +29,7 @@ impl RequestExecutor {
             database_name,
             identity,
             dns_overrides,
+            proxy_address,
             conventions,
         );
 
@@ -44,6 +46,7 @@ impl RequestExecutor {
         url: Url,
         database_name: String,
         dns_overrides: DnsOverrides,
+        proxy_address: Option<String>,
         identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
@@ -52,6 +55,7 @@ impl RequestExecutor {
             url,
             database_name,
             dns_overrides,
+            proxy_address,
             identity,
             conventions,
         )
@@ -61,6 +65,7 @@ impl RequestExecutor {
         url: Url,
         database_name: String,
         dns_overrides: DnsOverrides,
+        proxy_address: Option<String>,
         identity: Option<Identity>,
         conventions: DocumentConventions,
     ) -> Self {
@@ -69,6 +74,7 @@ impl RequestExecutor {
             vec![url],
             database_name,
             dns_overrides,
+            proxy_address,
             identity,
             conventions,
         )
@@ -80,7 +86,7 @@ impl RequestExecutor {
         request: reqwest::Request,
     ) -> Result<(), RequestExecutorError> {
         let (respond_to, receiver) = oneshot::channel();
-        let executemsg = RequestExecutorMessage::ExecuteRequest {
+        let executemsg = RequestExecutorMessage::ExecuteRavenCommand {
             respond_to,
             request: Box::new(request),
         };

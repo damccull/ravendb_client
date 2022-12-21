@@ -1,14 +1,20 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::{
+    collections::{HashMap, HashSet},
+    net::SocketAddr,
+};
 
 use rand::{seq::IteratorRandom, thread_rng};
 use reqwest::{header::HeaderValue, Identity, Url};
 use tokio::sync::mpsc;
-use tracing::instrument;
+use tracing::{instrument, Span};
 use uuid::Uuid;
 
 use crate::{
-    database_topology::DatabaseTopology, document_conventions::DocumentConventions,
-    node_selector::NodeSelector, raven_command::RavenCommand, server_node::ServerNode,
+    database_topology::{self, DatabaseTopology},
+    document_conventions::DocumentConventions,
+    node_selector::NodeSelector,
+    raven_command::RavenCommand,
+    server_node::ServerNode,
     DnsOverrides,
 };
 
@@ -21,17 +27,17 @@ pub struct RequestExecutorActor {
     application_id: Uuid,
     conventions: DocumentConventions,
     database: String,
+    database_topology: Option<DatabaseTopology>,
     dns_overrides: DnsOverrides,
     identity: Option<Identity>,
     last_known_urls: Vec<Url>,
     node_selector: Option<NodeSelector>,
+    proxy_address: Option<String>,
     receiver: mpsc::Receiver<RequestExecutorMessage>,
     receiver_internal: mpsc::Receiver<RequestExecutorMessage>,
     /// Cached http client. Clone this into tokio::spawn() for each request, it's cheap.
     reqwest_client: reqwest::Client,
     sender_internal: mpsc::Sender<RequestExecutorMessage>,
-    /// Node the topology came from
-    topology_source_node: Option<ServerNode>,
     /// Whether or not to run speed tests
     run_speed_test: bool,
     /// Holds the topology
@@ -43,7 +49,9 @@ impl RequestExecutorActor {
         receiver: mpsc::Receiver<RequestExecutorMessage>,
         database: String,
         identity: Option<Identity>,
+        initial_urls: Vec<Url>,
         dns_overrides: DnsOverrides,
+        proxy_address: Option<String>,
         conventions: DocumentConventions,
     ) -> Self {
         // Reqwest client maintains an internal connection pool. Reuse it so long as this
@@ -52,6 +60,9 @@ impl RequestExecutorActor {
 
         // Create internal messaging channel
         let (sender_internal, receiver_internal) = mpsc::channel(10);
+
+        // Get the initial topology
+        //let database_topology = self.initial_topology_update();
 
         // if let Some(identity) = client_identity.clone() {
         //                 client = client.identity(identity).use_rustls_tls();
@@ -63,36 +74,86 @@ impl RequestExecutorActor {
             application_id: Uuid::new_v4(),
             conventions,
             database,
+            database_topology: None,
             dns_overrides,
             identity: Option::default(),
             last_known_urls: Vec::default(),
             node_selector: Option::default(),
+            proxy_address,
             receiver,
             receiver_internal,
             reqwest_client,
             sender_internal,
-            topology_source_node: Option::default(),
             run_speed_test: false,
             topology: None,
         }
     }
     async fn handle_message(&mut self, msg: RequestExecutorMessage) {
+        // Apply a correlation id to all child spans of this message handler
+        Span::current().record("correlation_id", Uuid::new_v4().to_string());
         match msg {
             RequestExecutorMessage::ExecuteRequest {
                 respond_to,
                 request,
-            } => todo!(),
+            } => {
+                //TODO: Nuke this and wait for topology to be done, maybe.
+                let Some(topology) = self.database_topology else {
+                    // Database doesn't exist yet so send the caller a message to tell them
+                    let _ = respond_to.send(Err(RequestExecutorError::UnexpectedError(anyhow::anyhow!("Unable to get topology, initial update not yet finished"))));
+                    return;
+                };
+
+                let dns_overrides = self.dns_overrides.clone();
+                let identity = self.identity.clone();
+                let proxy_address = self.proxy_address.clone();
+                let topology_etag = topology.etag;
+                let sender_internal = self.sender_internal.clone();
+
+                // Spawn a task to do the request
+                tokio::spawn(async move {
+                    let result = send_raven_command_request_to_server(
+                        identity.clone(),
+                        dns_overrides.clone(),
+                        proxy_address.clone(),
+                        raven_command,
+                        topology_etag,
+                    )
+                    .await;
+
+                    if let Ok(response) = &result {
+                        if let Some(value) =
+                            response.headers().get("Refresh-Topology".to_lowercase())
+                        {
+                            if value.to_str().unwrap_or("false") == "true" {
+                                if let Err(e) = sender_internal
+                                    .send(RequestExecutorMessage::UpdateTopology)
+                                    .await
+                                {
+                                    tracing::error!(
+                                        "Could not send internal message to request topology update. Caused by: {}",
+                                         e
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    // Send the result back to the caller
+                    let _ = respond_to.send(result);
+                });
+            }
             RequestExecutorMessage::InitialUpdateTopology { initial_urls } => {
                 //TODO: Change this to handle subsequent topology updates, or consider handling both initial and subsequent in same fn
-                let result = self
-                    .initial_update_topology(initial_urls, self.application_id)
-                    .await;
-                if let Err(e) = result {
-                    tracing::error!(
-                        "An error occurred while running the initial topology update. Caused by: {:?}",
-                        e
-                    );
-                }
+                // let result = self
+                //     .initial_update_topology(initial_urls, self.application_id)
+                //     .await;
+                // if let Err(e) = result {
+                //     tracing::error!(
+                //         "An error occurred while running the initial topology update. Caused by: {:?}",
+                //         e
+                //     );
+                // }
+                unimplemented!();
             }
             RequestExecutorMessage::UpdateTopology => {
                 todo!();
@@ -103,98 +164,12 @@ impl RequestExecutorActor {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
-    async fn initial_update_topology(
-        &mut self,
+    async fn wait_for_initial_topology(
+        &self,
         initial_urls: Vec<Url>,
         application_id: Uuid,
     ) -> Result<(), Vec<(Url, RequestExecutorError)>> {
-        //TODO: Consider handling both initial and subsequent topology updates in this same fn
-
-        // Note: Java client implementation validates URL strings here.
-        // This rust library does not because the strings are validated by the DocumentStoreBuilder
-        // and are already valid `reqwest::Url`s before they arrive at this point.
-
-        let mut server_errors = Vec::new();
-
-        for url in initial_urls.iter() {
-            let server_node = ServerNode::new(url.clone(), self.database.clone());
-            let update_parameters = UpdateTopologyParameters {
-                server_node: server_node.clone(),
-                timeout_in_ms: i32::MAX, //TODO: Is this necessary? I believe it has something to do with a tcp timeout bug, but maybe only in java or C#
-                force_update: false,
-                application_id,
-            };
-
-            let x = RequestExecutorActor::get_topology_from_node(update_parameters).await;
-
-            match x {
-                Ok(_) => {
-                    // Yay, the topology is updated, return early
-                    tracing::info!("Initial topology update complete");
-                    self.topology_source_node = Some(server_node);
-                    return Ok(());
-                }
-                Err(e) => {
-                    server_errors.push((url.clone(), e));
-                }
-            }
-            // No timer initialized here like JVM client. Actor runner handles the timer.
-        }
-        // If this point is reached, none of the provided URLs succeeded in providing a topology
-        // for one reason or another. At this point, try to get a topology from the current
-        // NodeSelector, if one exists.
-
-        let mut nodes = self.get_topology_nodes();
-
-        // If no list of nodes came back from the current NodeSelector, either because it doesn't
-        // exist or its topology is empty/None, create a topology from the initial urls. Hope these
-        // servers are actually online and listening.
-        if nodes.is_none() {
-            nodes = Some(
-                initial_urls
-                    .iter()
-                    .map(|url| {
-                        let mut server_node = ServerNode::new(url.clone(), self.database.clone());
-
-                        server_node.cluster_tag = "!".to_string();
-                        (server_node.clone(), server_node)
-                    })
-                    .collect::<HashMap<ServerNode, ServerNode>>(),
-            );
-        }
-
-        // Create a new topology from the NodeSelector topology, or from the manufactured one above.
-        let topology = DatabaseTopology {
-            nodes: {
-                if let Some(nodes) = nodes {
-                    nodes
-                } else {
-                    HashMap::new()
-                }
-            },
-            ..Default::default()
-        };
-
-        // Create a new NodeSelector from the newly created topology.
-        self.node_selector = Some(NodeSelector::new(Some(topology)));
-
-        // Ensure the user did not somehow pass an empty list of URLs.
-        if !initial_urls.is_empty() {
-            // No timer initialized here like JVM client. Actor runner handles the timer.
-            return Ok(());
-        }
-
-        // Save the initial urls in case they're needed for something later.
-        // TODO: Fix the above comment when you figure out what this is for.
-        self.last_known_urls = initial_urls;
-
-        // Return the errors to the caller to deal with
-        let server_errors = server_errors
-            .into_iter()
-            .map(|e| (e.0, e.1))
-            .collect::<Vec<_>>();
-        Err(server_errors)
+        Ok(())
     }
 
     async fn get_topology_from_node(
@@ -203,7 +178,7 @@ impl RequestExecutorActor {
         todo!()
     }
 
-    fn get_topology_nodes(&self) -> Option<HashMap<ServerNode, ServerNode>> {
+    fn get_topology_nodes(&self) -> Option<HashSet<ServerNode>> {
         if let Some(topology) = self.get_topology() {
             Some(topology.nodes)
         } else {
@@ -231,17 +206,14 @@ impl RequestExecutorActor {
 
     /// Returns the currently preferred node.
     /// Right now this looks for the first node with 0 failures and returns it.
-    /// On the off chance all nodes have failures, it returns
+    /// On the off chance all nodes have failures, it returns a random node.
     fn get_preferred_node(&self) -> Option<ServerNode> {
-        let x = self.topology.as_ref().and_then(|t| {
-            t.node_failures
+        let x = self.topology.as_ref().and_then(|topology| {
+            topology
+                .node_failures
                 .iter()
                 .find(|(_, count)| **count == 0)
-                .and_then(|(node_key, _)| {
-                    self.topology
-                        .as_ref()
-                        .map(|topology| topology.nodes[node_key].clone())
-                })
+                .and_then(|(node, _)| Some(node.clone()))
         });
 
         if x.is_some() {
@@ -266,11 +238,91 @@ impl RequestExecutorActor {
     fn select_random_node(&self) -> Option<ServerNode> {
         if let Some(topology) = &self.topology {
             let mut rng = thread_rng();
-            topology.nodes.values().choose(&mut rng).cloned()
+            topology.nodes.iter().choose(&mut rng).cloned()
         } else {
             None
         }
     }
+}
+
+#[instrument(level = "debug")]
+async fn initial_update_topology(
+    initial_urls: Vec<Url>,
+    database: String,
+    application_id: Uuid,
+) -> Result<DatabaseTopology, Vec<(Url, RequestExecutorError)>> {
+    // Note: Java client implementation validates URL strings here.
+    // This rust library does not because the strings are validated by the DocumentStoreBuilder
+    // and are already valid `reqwest::Url`s before they arrive at this point.
+
+    let mut server_errors = Vec::new();
+
+    for url in initial_urls.iter() {
+        let server_node = ServerNode::new(url.clone(), database.clone());
+        let update_parameters = UpdateTopologyParameters {
+            server_node: server_node.clone(),
+            timeout_in_ms: i32::MAX, //TODO: Is this necessary? I believe it has something to do with a tcp timeout bug, but maybe only in java or C#
+            force_update: false,
+            application_id,
+        };
+
+        let x = update_topology_async(update_parameters).await;
+
+        match x {
+            Ok(result) => {
+                // Yay, the topology is updated, return early
+                tracing::info!("Initial topology update complete");
+                return Ok(result);
+            }
+            Err(e) => {
+                server_errors.push((url.clone(), e));
+            }
+        }
+        // No timer initialized here like JVM client. Actor runner handles the timer.
+    }
+    // If this point is reached, none of the provided URLs succeeded in providing a topology
+    // for one reason or another.
+
+    // Create a set of [`ServerNode`]s from the initial urls. Hope these
+    // servers are actually online and listening.
+    let nodes = initial_urls
+        .iter()
+        .map(|url| {
+            let mut server_node = ServerNode::new(url.clone(), database.clone());
+
+            server_node.cluster_tag = "!".to_string();
+            server_node
+        })
+        .collect::<HashSet<ServerNode>>();
+
+    // Create a new topology from manufactured one above.
+    let topology = DatabaseTopology {
+        nodes,
+        ..Default::default()
+    };
+
+    // Ensure the user did not somehow pass an empty list of URLs.
+    if !initial_urls.is_empty() {
+        // No timer initialized here like JVM client. Actor runner handles the timer.
+        return Ok(topology);
+    }
+
+    // Return the errors to the caller to deal with
+    let server_errors = server_errors
+        .into_iter()
+        .map(|e| (e.0, e.1))
+        .collect::<Vec<_>>();
+    Err(server_errors)
+}
+
+async fn update_topology_async(
+    parameters: UpdateTopologyParameters,
+) -> Result<DatabaseTopology, RequestExecutorError> {
+    todo!();
+}
+
+struct TopologyUpdateResult {
+    topology: DatabaseTopology,
 }
 
 struct UpdateTopologyParameters {
@@ -286,7 +338,7 @@ async fn send_raven_command_request_to_server(
     dns_overrides: DnsOverrides,
     proxy_address: Option<String>,
     raven_command: RavenCommand,
-    topology_etag: i64,
+    topology_etag: u64,
 ) -> anyhow::Result<reqwest::Response> {
     let mut client = reqwest::Client::builder();
 

@@ -289,6 +289,7 @@ impl DocumentStoreActor {
                 self.initial_urls.clone(),
                 database.clone(),
                 self.dns_overrides.clone(),
+                self.proxy_address.clone(),
                 self.client_identity.clone(),
                 self.conventions.clone(),
             )
