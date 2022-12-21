@@ -137,7 +137,8 @@ impl RequestExecutorActor {
                     .iter()
                     .map(|url| {
                         let mut server_node = ServerNode::new(url.clone(), self.database.clone());
-                        server_node.set_cluster_tag("!".to_string());
+
+                        server_node.cluster_tag = "!".to_string();
                         (server_node.clone(), server_node)
                     })
                     .collect::<HashMap<ServerNode, ServerNode>>(),
