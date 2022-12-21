@@ -8,8 +8,8 @@ use man::Manual;
 use crate::{dist_dir, project_root, DynError};
 
 pub fn dist() -> Result<(), DynError> {
-    let _ = fs::remove_dir_all(&dist_dir());
-    fs::create_dir_all(&dist_dir())?;
+    let _ = fs::remove_dir_all(dist_dir());
+    fs::create_dir_all(dist_dir())?;
 
     dist_binary()?;
     //dist_manpage()?;
@@ -22,7 +22,7 @@ pub fn dist_binary() -> Result<(), DynError> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let status = Command::new(cargo)
         .current_dir(project_root())
-        .args(&["build", "--release"])
+        .args(["build", "--release"])
         .status()?;
 
     if !status.success() {
@@ -83,6 +83,6 @@ pub fn dist_manpage() -> Result<(), DynError> {
     let page = Manual::new("norseline-rs")
         .about("Runs a discord bot and website for Star Citizen guild content.")
         .render();
-    fs::write(dist_dir().join("norseline-rs.man"), &page)?;
+    fs::write(dist_dir().join("norseline-rs.man"), page)?;
     Ok(())
 }

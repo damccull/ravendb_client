@@ -25,7 +25,7 @@ pub fn dist_dir() -> PathBuf {
 pub fn check_psql_exists() -> Result<(), DynError> {
     let status = Command::new("psql")
         .current_dir(project_root())
-        .args(&["--version"])
+        .args(["--version"])
         .status();
 
     match status {
@@ -44,7 +44,7 @@ pub fn check_psql_exists() -> Result<(), DynError> {
 pub fn check_sqlx_exists() -> Result<(), DynError> {
     let status = Command::new("sqlx")
         .current_dir(project_root())
-        .args(&["--version"])
+        .args(["--version"])
         .status();
 
     match status {

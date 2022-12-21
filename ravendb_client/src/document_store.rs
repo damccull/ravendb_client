@@ -12,8 +12,6 @@ use reqwest::Url;
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
 
-use crate::cluster_topology::ClusterTopologyInfo;
-use crate::raven_command::RavenCommand;
 use crate::request_executor::RequestExecutor;
 
 pub type DnsOverrides = HashMap<String, IpAddr>;

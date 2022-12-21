@@ -3,10 +3,7 @@ use std::{collections::HashMap, fs::File, io::Read};
 use reqwest::Url;
 use tracing::instrument;
 
-use crate::{
-    cluster_topology::{ClusterTopology, ClusterTopologyInfo},
-    DnsOverrides, DocumentStore, DocumentStoreError, DocumentStoreInitialConfiguration,
-};
+use crate::{DnsOverrides, DocumentStore, DocumentStoreError, DocumentStoreInitialConfiguration};
 
 #[derive(Debug)]
 pub struct DocumentStoreBuilder {

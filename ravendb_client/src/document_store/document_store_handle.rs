@@ -4,8 +4,8 @@ use tokio::sync::{mpsc, oneshot};
 use tracing::instrument;
 
 use crate::{
-    raven_command::RavenCommand, request_executor::RequestExecutor, run_document_store_actor,
-    DocumentSession, DocumentStoreActor, DocumentStoreBuilder, DocumentStoreError,
+    request_executor::RequestExecutor, run_document_store_actor, DocumentSession,
+    DocumentStoreActor, DocumentStoreBuilder, DocumentStoreError,
     DocumentStoreInitialConfiguration, DocumentStoreMessage,
 };
 

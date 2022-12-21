@@ -1,17 +1,12 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::collections::HashMap;
 
-use anyhow::Context;
-use rand::seq::IteratorRandom;
-use reqwest::{header::HeaderValue, Identity, Url};
-use tokio::{sync::mpsc, task::JoinHandle};
+use reqwest::Url;
+use tokio::sync::mpsc;
 use tracing::{instrument, Span};
 use uuid::Uuid;
 
 use crate::{
-    cluster_topology::ClusterTopologyInfo,
-    document_conventions::DocumentConventions,
-    raven_command::{RavenCommand, RavenCommandVariant},
-    request_executor::RequestExecutor,
+    document_conventions::DocumentConventions, request_executor::RequestExecutor,
     CertificatePlaceholder, DnsOverrides, DocumentStoreError, DocumentStoreInitialConfiguration,
     DocumentStoreMessage,
 };
@@ -123,19 +118,18 @@ impl DocumentStoreActor {
             DocumentStoreMessage::GetServerAddress { respond_to } => {
                 let result = self.get_server_address().await;
                 let _ = respond_to.send(result);
-            }
-            // DocumentStoreMessage::UpdateTopology => {
-            //     tracing::debug!("Updating topology.");
-            //     match self.refresh_topology().await {
-            //         Ok(_) => tracing::debug!("Topology update downloaded, awaiting store."),
-            //         Err(e) => {
-            //             tracing::error!(
-            //                 "There was an error updating the topology. Caused by: {}",
-            //                 e
-            //             );
-            //         }
-            //     }
-            // }
+            } // DocumentStoreMessage::UpdateTopology => {
+              //     tracing::debug!("Updating topology.");
+              //     match self.refresh_topology().await {
+              //         Ok(_) => tracing::debug!("Topology update downloaded, awaiting store."),
+              //         Err(e) => {
+              //             tracing::error!(
+              //                 "There was an error updating the topology. Caused by: {}",
+              //                 e
+              //             );
+              //         }
+              //     }
+              // }
         }
     }
 
@@ -291,7 +285,12 @@ impl DocumentStoreActor {
         let create_request_executor = || -> RequestExecutor {
             // TODO: Figure out how to allow the request executor to publish events
             // todo!()
-            RequestExecutor::new(self.initial_urls.clone(), database.clone(), self.client_identity.clone(), self.conventions.clone())
+            RequestExecutor::new(
+                self.initial_urls.clone(),
+                database.clone(),
+                self.client_identity.clone(),
+                self.conventions.clone(),
+            )
         };
 
         // Creates a request executor for a single, specific server, ignoring topology

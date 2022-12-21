@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use rand::{seq::IteratorRandom, thread_rng};
 
-use crate::{server_node::ServerNode, database_topology::DatabaseTopology};
+use crate::{database_topology::DatabaseTopology, server_node::ServerNode};
 
 ///! Requirements for the NodeSelector
 /// 1. Maintain the following state:

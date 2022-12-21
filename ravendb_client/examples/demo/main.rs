@@ -55,7 +55,7 @@ async fn run() -> anyhow::Result<()> {
     tracing::info!("DocumentStore created.");
 
     // Open a new session from the document store
-    let session = document_store.open_session()?;
+    let _session = document_store.open_session()?;
 
     // match session
     //     .get_all_documents_for_database("sample", Some(1), None)
