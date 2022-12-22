@@ -10,11 +10,8 @@ use tracing::{instrument, Span};
 use uuid::Uuid;
 
 use crate::{
-    database_topology::{self, DatabaseTopology},
-    document_conventions::DocumentConventions,
-    node_selector::NodeSelector,
-    raven_command::RavenCommand,
-    server_node::ServerNode,
+    database_topology::DatabaseTopology, document_conventions::DocumentConventions,
+    node_selector::NodeSelector, raven_command::RavenCommand, server_node::ServerNode,
     DnsOverrides,
 };
 
@@ -92,12 +89,12 @@ impl RequestExecutorActor {
         // Apply a correlation id to all child spans of this message handler
         Span::current().record("correlation_id", Uuid::new_v4().to_string());
         match msg {
-            RequestExecutorMessage::ExecuteRequest {
+            RequestExecutorMessage::ExecuteRavenCommand {
                 respond_to,
-                request,
+                command,
             } => {
                 //TODO: Nuke this and wait for topology to be done, maybe.
-                let Some(topology) = self.database_topology else {
+                let Some(topology) = self.database_topology.clone() else {
                     // Database doesn't exist yet so send the caller a message to tell them
                     let _ = respond_to.send(Err(RequestExecutorError::UnexpectedError(anyhow::anyhow!("Unable to get topology, initial update not yet finished"))));
                     return;
@@ -115,7 +112,7 @@ impl RequestExecutorActor {
                         identity.clone(),
                         dns_overrides.clone(),
                         proxy_address.clone(),
-                        raven_command,
+                        command,
                         topology_etag,
                     )
                     .await;
@@ -139,7 +136,7 @@ impl RequestExecutorActor {
                     }
 
                     // Send the result back to the caller
-                    let _ = respond_to.send(result);
+                    //let _ = respond_to.send(result);
                 });
             }
             RequestExecutorMessage::InitialUpdateTopology { initial_urls } => {
@@ -213,7 +210,7 @@ impl RequestExecutorActor {
                 .node_failures
                 .iter()
                 .find(|(_, count)| **count == 0)
-                .and_then(|(node, _)| Some(node.clone()))
+                .map(|(node, _)| node.clone())
         });
 
         if x.is_some() {

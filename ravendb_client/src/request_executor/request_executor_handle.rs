@@ -2,7 +2,7 @@ use reqwest::{Identity, Url};
 use tokio::sync::{mpsc, oneshot};
 use tracing::instrument;
 
-use crate::{document_conventions::DocumentConventions, DnsOverrides};
+use crate::{document_conventions::DocumentConventions, raven_command::RavenCommand, DnsOverrides};
 
 use super::{
     request_executor_actor::run_request_executor_actor, RequestExecutorActor, RequestExecutorError,
@@ -28,6 +28,7 @@ impl RequestExecutor {
             receiver,
             database_name,
             identity,
+            initial_urls.clone(),
             dns_overrides,
             proxy_address,
             conventions,
@@ -83,12 +84,12 @@ impl RequestExecutor {
     #[instrument(level = "DEBUG", skip(self))]
     pub(crate) async fn execute_request(
         &self,
-        request: reqwest::Request,
-    ) -> Result<(), RequestExecutorError> {
+        command: RavenCommand,
+    ) -> Result<reqwest::Response, RequestExecutorError> {
         let (respond_to, receiver) = oneshot::channel();
         let executemsg = RequestExecutorMessage::ExecuteRavenCommand {
             respond_to,
-            request: Box::new(request),
+            command,
         };
         let _ = self.sender.send(executemsg).await;
 

@@ -60,11 +60,7 @@ impl NodeSelector {
             .node_failures
             .iter()
             .find(|(node, count)| **count == 0)
-            .and_then(|(node_key, count)| {
-                self.topology
-                    .as_ref()
-                    .map(|topology| topology.nodes[node_key].clone())
-            });
+            .map(|(node, count)| node.clone());
 
         if x.is_some() {
             return x;
@@ -88,7 +84,7 @@ impl NodeSelector {
     fn select_random_node(&self) -> Option<ServerNode> {
         if let Some(topology) = &self.topology {
             let mut rng = thread_rng();
-            topology.nodes.values().choose(&mut rng).cloned()
+            topology.nodes.iter().choose(&mut rng).cloned()
         } else {
             None
         }
